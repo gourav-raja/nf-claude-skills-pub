@@ -1,0 +1,25 @@
+{
+  "name": "Noon Claude Skills",
+  "description": "Official internal Claude Code skills for Noon engineers",
+  "author": "noon",
+  "plugins": [
+    {
+      "name": "figma-events",
+      "description": "Generate Noon Food analytics event specs from a Figma screen URL",
+      "path": "plugins/figma-events"
+    },
+    {
+      "name": "superpowers",
+      "description": "Structured development skills: TDD, brainstorming, code review, implementation planning, git workflow",
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers"
+      }
+    },
+    {
+      "name": "nf-analyst",
+      "description": "Text-to-SQL for noon food delivery analytics on BigQuery — orders, GMV, sessions, funnel, outlets, logistics",
+      "path": "plugins/nf-analyst"
+    }
+  ]
+}
