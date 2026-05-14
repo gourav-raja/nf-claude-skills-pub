@@ -2,5 +2,7 @@
   "name": "nf-analyst",
   "version": "0.1.0",
   "description": "Text-to-SQL for noon food delivery analytics on BigQuery. Ask any analytics question in plain English and get back a runnable BigQuery query.",
-  "author": "noon Food Analytics"
+  "author": {
+    "name": "noon Food Analytics"
+  }
 }
