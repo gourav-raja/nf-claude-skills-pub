@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLAUDE_COMMANDS_DIR="$HOME/.claude/commands"
+MARKETPLACE="nf-claude-skills-pub"
+REPO="gourav-raja/nf-claude-skills-pub"
 
-mkdir -p "$CLAUDE_COMMANDS_DIR"
+PLUGINS=(
+  "nf-analyst"
+  "figma-events"
+)
 
-for file in "$REPO_DIR/commands/"*.md; do
-  name="$(basename "$file")"
-  target="$CLAUDE_COMMANDS_DIR/$name"
+echo "→ Configuring git to use HTTPS for GitHub..."
+git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-  if [ -L "$target" ]; then
-    rm "$target"
-  fi
+echo "→ Adding marketplace: $MARKETPLACE"
+claude plugin marketplace add "$REPO"
 
-  ln -s "$file" "$target"
-  echo "linked: $name → $CLAUDE_COMMANDS_DIR/$name"
+for plugin in "${PLUGINS[@]}"; do
+  echo "→ Installing plugin: $plugin"
+  claude plugin install "$plugin@$MARKETPLACE"
 done
 
-echo "noon claude skills installed."
+echo "✔ Done. Skills available in your next Claude Code session."

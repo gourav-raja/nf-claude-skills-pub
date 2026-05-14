@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLAUDE_COMMANDS_DIR="$HOME/.claude/commands"
+MARKETPLACE="nf-claude-skills-pub"
 
-for file in "$REPO_DIR/commands/"*.md; do
-  name="$(basename "$file")"
-  target="$CLAUDE_COMMANDS_DIR/$name"
+PLUGINS=(
+  "nf-analyst"
+  "figma-events"
+)
 
-  if [ -L "$target" ]; then
-    rm "$target"
-    echo "removed: $name"
-  fi
+for plugin in "${PLUGINS[@]}"; do
+  echo "→ Uninstalling plugin: $plugin"
+  claude plugin uninstall "$plugin" || true
 done
 
-echo "noon claude skills uninstalled."
+echo "→ Removing marketplace: $MARKETPLACE"
+claude plugin marketplace remove "$MARKETPLACE" || true
+
+echo "✔ Done."

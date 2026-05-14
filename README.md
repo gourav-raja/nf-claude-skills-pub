@@ -18,19 +18,27 @@ To enforce the marketplace org-wide via Claude Code enterprise managed settings,
 
 ## Developer setup
 
-Add the marketplace once:
+Run these once on any machine:
 
 ```bash
-claude plugin marketplace add https://git.noon.com/platform/noon-claude-skills/raw/main/marketplace.json
+# 1. Allow Claude Code to clone GitHub repos over HTTPS (SSH not required)
+git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+# 2. Register the marketplace
+claude plugin marketplace add gourav-raja/nf-claude-skills-pub
+
+# 3. Install plugins
+claude plugin install nf-analyst@nf-claude-skills-pub
+claude plugin install figma-events@nf-claude-skills-pub
 ```
 
-Install the figma-events skill:
+Or run the install script (does all of the above):
 
 ```bash
-claude plugin install figma-events
+bash <(curl -fsSL https://raw.githubusercontent.com/gourav-raja/nf-claude-skills-pub/main/install.sh)
 ```
 
-The skill is now available as `/figma-events` in any Claude Code session.
+Skills are available immediately in any Claude Code session.
 
 ## Available skills
 
