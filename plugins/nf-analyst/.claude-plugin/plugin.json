@@ -1,17 +1,13 @@
 {
-  "name": "nf-analyst",
-  "version": "0.4.0",
-  "description": "Text-to-SQL for noon food delivery analytics on BigQuery. Translates natural-language questions about orders, GMV, customers, outlets, sessions, funnel, hubs, and dashboards into correct BigQuery SQL using a curated context library (glossary, table registry, schemas, metrics, rules, examples).",
-  "author": {
-    "name": "noon Food Analytics"
-  },
-  "keywords": [
-    "text-to-sql",
-    "bigquery",
-    "noon",
-    "food",
-    "analytics",
-    "gmv",
-    "funnel"
+  "name": "food-analytics-sql",
+  "version": "0.1.0",
+  "description": "Text-to-SQL for noon food delivery analytics on BigQuery. Ask any analytics question in plain English and get back a runnable BigQuery query.",
+  "author": "noon Food Analytics",
+  "skills": [
+    {
+      "name": "food-analytics-sql",
+      "description": "Converts natural-language analytics questions into correct BigQuery SQL using noon's curated context library (glossary, table registry, schemas, metrics, rules, examples)",
+      "path": "skills/food-analytics-sql/SKILL.md"
+    }
   ]
 }
