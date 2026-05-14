@@ -1,5 +1,8 @@
 {
-  "name": "Noon Claude Skills",
+  "name": "nf-claude-skills-pub",
+  "owner": {
+    "name": "gourav-raja"
+  },
   "description": "Official internal Claude Code skills for Noon engineers",
   "author": "noon",
   "plugins": [
