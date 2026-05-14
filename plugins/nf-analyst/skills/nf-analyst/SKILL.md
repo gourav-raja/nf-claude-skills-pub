@@ -3,7 +3,7 @@ name: nf-analyst
 description: Translates natural-language questions about noon's food delivery business into correct BigQuery SQL. Use this skill whenever the user asks for SQL, a query, a number, a metric, or an analysis involving noon food/order data — including GMV, AOV, active/new/repeat customers, churn, retention, sessions, funnel/conversion, bounce, outlets/restaurants/brands, hubs and cities, ratings, cancellations, discounts/burn/promo, delivery time / O2D / SLA, Noon One, Mix/Mealplan, Flash, Ping, ROD, ADMON, dashboards (Sherlock, OUT brand/venue), or any reference to tables like daily_orders, nat_events_complete, session_segments_nat, outlet_status_complete, daily_hubz_rca_nat, food_order, food_order_item, mp_order_base_mat, mealplan_daily_orders, outlet_dod_funnel. Trigger phrases include "write a SQL", "BigQuery", "how many customers", "GMV", "funnel conversion", "live outlets", "sessions", "noon food", "shawarma context".
 ---
 
-# food-analytics-sql
+# nf-analyst
 
 Generate correct, runnable BigQuery SQL for questions about noon's food delivery business, grounded in the curated JSON context library shipped with this skill. Output SQL plus a short reasoning trail so analysts can verify which tables, columns, and rules were applied.
 
@@ -27,7 +27,7 @@ All curated context lives in `references/` as JSON files. Read them ON DEMAND �
 | `personalisation.json` | Read when the question mentions personalisation, recommendations, ranking, surface, or relevance. |
 | `search_metrics.json` | Read when the question mentions search, search funnel, query, NSR, zero-results, or search conversion. |
 
-Use the `Read` tool with the absolute path `~/.claude/plugins/food-analytics-sql/references/<filename>` to load a file. If that path does not exist, fall back to the path where the skill file itself lives — replace `SKILL.md` with `references/<filename>` in the skill's own directory.
+Use the `Read` tool with the absolute path `~/.claude/plugins/nf-analyst/references/<filename>` to load a file. If that path does not exist, fall back to the path where the skill file itself lives — replace `SKILL.md` with `references/<filename>` in the skill's own directory.
 
 ## Workflow
 

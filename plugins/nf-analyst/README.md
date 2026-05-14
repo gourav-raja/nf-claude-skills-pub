@@ -1,4 +1,4 @@
-# food-analytics-sql
+# nf-analyst
 
 A Claude plugin that converts natural-language questions about noon's food delivery business into correct BigQuery SQL.
 
@@ -30,7 +30,7 @@ Distribute the `.plugin` file produced from this directory. Org members install 
 
 ## Update flow
 
-The context library lives at `skills/food-analytics-sql/references/`. To update business definitions, table schemas, or rules:
+The context library lives at `skills/nf-analyst/references/`. To update business definitions, table schemas, or rules:
 
 1. Edit the relevant `*.json` in that directory.
 2. Bump `version` in `.claude-plugin/plugin.json`.
@@ -39,11 +39,11 @@ The context library lives at `skills/food-analytics-sql/references/`. To update 
 ## File map
 
 ```
-food-analytics-sql/
+nf-analyst/
 ├── .claude-plugin/
 │   └── plugin.json
 ├── skills/
-│   └── food-analytics-sql/
+│   └── nf-analyst/
 │       ├── SKILL.md
 │       └── references/
 │           ├── 01_glossary.json
