@@ -9,7 +9,7 @@
     {
       "name": "figma-events",
       "description": "Generate Noon Food analytics event specs from a Figma screen URL",
-      "path": "plugins/figma-events"
+      "source": "plugins/figma-events"
     },
     {
       "name": "superpowers",
@@ -22,7 +22,7 @@
     {
       "name": "nf-analyst",
       "description": "Text-to-SQL for noon food delivery analytics on BigQuery — orders, GMV, sessions, funnel, outlets, logistics",
-      "path": "plugins/nf-analyst"
+      "source": "plugins/nf-analyst"
     }
   ]
 }

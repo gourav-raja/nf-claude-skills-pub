@@ -1,13 +1,6 @@
 {
-  "name": "food-analytics-sql",
+  "name": "nf-analyst",
   "version": "0.1.0",
   "description": "Text-to-SQL for noon food delivery analytics on BigQuery. Ask any analytics question in plain English and get back a runnable BigQuery query.",
-  "author": "noon Food Analytics",
-  "skills": [
-    {
-      "name": "food-analytics-sql",
-      "description": "Converts natural-language analytics questions into correct BigQuery SQL using noon's curated context library (glossary, table registry, schemas, metrics, rules, examples)",
-      "path": "skills/food-analytics-sql/SKILL.md"
-    }
-  ]
+  "author": "noon Food Analytics"
 }
