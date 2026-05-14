@@ -1,0 +1,190 @@
+{
+  "overview": {
+    "description": "restaurant_search_orders is a session-level search performance table that tracks how restaurant search queries on the NoonFood app translate into impressions, clicks, and orders. Built from raw funnel events, it enables analysis of search conversion rate (CR), click-through rate, and GMV attributed to organic search behaviour. Scoped to AE, last 14 days rolling window.",
+    "primary_tables": [
+      "noonbifood.product.restaurant_search_orders"
+    ],
+    "dag_id": "raj_temp",
+    "task_id": "search_cr",
+    "schema": "noonbifood.product",
+    "country": "ae",
+    "window": "CURRENT_DATE - 14 to CURRENT_DATE - 1 (rolling 14 days, refreshed on each run)"
+  },
+
+  "glossary": {
+    "Impression": "A session where a restaurant tile was shown to a user for a given search keyword (outlet_impression_v2 event). Captured via Outlet_Code + Searches + session_id.",
+    "Click": "A session where the user clicked into a restaurant page after seeing it in search results (page_outlet_v2 event). Only counted if First_Click_Time > First_Impression_Time — ensuring the click happened after the impression.",
+    "Valid_Anchor": "A session × outlet × search combination that has both a First_Impression_Time and a First_Click_Time, and where the click happened after the impression. This is the baseline qualifying unit for CR.",
+    "Order": "A transaction_v2 event that occurred after the First_Click_Time for the same session × outlet × search. Joined to Valid_Orders to confirm the order was non-failed.",
+    "Frequency": "Count of distinct sessions where a restaurant was impressed for a given search keyword. Equivalent to impression volume.",
+    "Clicks": "Count of distinct sessions where the user clicked into the restaurant page after impression (from Session_Grain — requires a valid anchor).",
+    "Orders": "Count of distinct sessions where the user placed an order at the restaurant after clicking, attributed to search. Had_Order = 1.",
+    "GMV": "Sum of order GMV attributed to search sessions. Joined from daily_orders via transaction_v2 event and outlet_code match.",
+    "Avg_Position": "CAST(ROUND(AVG(Session_Best_Position)), INT64) — average of the best (minimum) position the restaurant appeared at in search results for a session.",
+    "Session_Best_Position": "MIN(Position) — the highest (lowest-numbered) position a restaurant tile was shown in for a given session × search. Position is extracted from event_misc.wt field (3rd segment after splitting by /).",
+    "search_keyword": "Searches column — LOWER(TRIM(event_misc.sk)) — the search term typed by the user. NULL or single-character values are excluded.",
+    "CTR": "Click-Through Rate. Not a stored column — computed as: Clicks / Frequency.",
+    "Search_CR": "Search Conversion Rate. Not a stored column — computed as: Orders / Clicks.",
+    "Impression_CR": "Impression-to-Order Rate. Not a stored column — computed as: Orders / Frequency.",
+    "MealTime": "Hour-based time bucket derived from event_time adjusted to UAE timezone (UTC+4). Values: Late Night (00–06), Breakfast (07–10), Lunch (11–14), Snacks (15–18), Dinner (19–23).",
+    "Had_Order": "Binary flag (1/0) in Session_Grain. 1 if the session had a transaction_v2 event for this outlet after First_Click_Time that matches a valid non-failed order."
+  },
+
+  "tables": {
+    "noonbifood.product.restaurant_search_orders": {
+      "description": "Session-aggregated search performance table. One row per Date × City × Hub × MealTime × Searches × Rx_Code. Tracks impressions (Frequency), clicks, orders, GMV, and average position for each restaurant × search keyword combination. Rolling 14-day window, refreshed on each DAG run.",
+      "grain": "One row per Date × City × Hub × MealTime × Searches × Rx_Code × Restaurant",
+      "partition": "NONE — no day partition column. Filter on Date directly. Window is always last 14 days.",
+      "key_columns": {
+        "Date": "Date of the session events (UTC+4 adjusted) [DATE]",
+        "City": "City derived from session_zone, INITCAP formatted (e.g. Dubai) [STRING]",
+        "Hub": "Hub/zone derived from session_zone, INITCAP formatted [STRING]",
+        "MealTime": "Time bucket of the session. Values: Late Night, Breakfast, Lunch, Snacks, Dinner. Derived from hour of event_time in UAE timezone (UTC+4). [STRING]",
+        "Searches": "LOWER(TRIM(event_misc.sk)) — the search keyword typed by the user. Null and single-character values excluded. [STRING]",
+        "Rx_Code": "UPPER(TRIM(restaurant_code)) — restaurant-level code mapped from outlet_code via outlet_status_complete [STRING]",
+        "Restaurant": "Restaurant name from outlet_status_complete [STRING]",
+        "Current_cuisine": "Comma-separated list of consumer cuisines from outlet_consumer_and_filter_cuisines for the restaurant's outlet [STRING]",
+        "proposed_cuisine": "final_cuisine from restaurant_cuisine_tags — the proposed/tagged cuisine for the restaurant [STRING]",
+        "item_tag": "item_tags from restaurant_cuisine_tags — item-level tags associated with the restaurant [STRING]",
+        "Frequency": "COUNT(DISTINCT session_id) from All_Impressions — number of distinct sessions where the restaurant was impressed for this search keyword [INTEGER]",
+        "Clicks": "COUNT(DISTINCT session_id) from Session_Grain — distinct sessions where user clicked the restaurant page after impression. Requires valid anchor (click after impression). [INTEGER]",
+        "Orders": "COUNT(DISTINCT session_id WHERE Had_Order = 1) — sessions where a confirmed non-failed order was placed at this restaurant after clicking through search [INTEGER]",
+        "GMV": "SUM(gmv) from daily_orders attributed to search-driven orders for this restaurant × keyword. Joined via transaction_v2 order_id and outlet_code. [FLOAT]",
+        "Avg_Position": "CAST(ROUND(AVG(Session_Best_Position)), INT64) — average of the best (minimum) position at which the restaurant appeared in search results across sessions [INTEGER]"
+      }
+    }
+  },
+
+  "metrics": {
+    "Frequency": {
+      "definition": "Impression volume — number of distinct sessions where a restaurant was shown for a given search keyword.",
+      "formula": "COUNT(DISTINCT ai.sid) from All_Impressions",
+      "table": "noonbifood.product.restaurant_search_orders"
+    },
+    "Clicks": {
+      "definition": "Number of distinct sessions where the user clicked into the restaurant page after impression, for a given search keyword. Only sessions with a valid anchor (click > impression time) are counted.",
+      "formula": "COUNT(DISTINCT sg.sid) from Session_Grain",
+      "table": "noonbifood.product.restaurant_search_orders"
+    },
+    "Orders": {
+      "definition": "Number of distinct sessions where a non-failed order was placed at the restaurant after clicking through search.",
+      "formula": "COUNT(DISTINCT CASE WHEN sg.Had_Order = 1 THEN sg.sid END)",
+      "table": "noonbifood.product.restaurant_search_orders"
+    },
+    "GMV": {
+      "definition": "Total order value attributed to search-driven sessions for this restaurant × keyword.",
+      "formula": "SUM(vso.gmv) from Valid_Search_Orders joined on sid and Rx_Code",
+      "table": "noonbifood.product.restaurant_search_orders"
+    },
+    "Avg_Position": {
+      "definition": "Average best position a restaurant appeared at in search results across sessions. Lower is better (position 1 = top of results).",
+      "formula": "CAST(ROUND(AVG(MIN(Position) per session)), INT64). Position extracted from event_misc.wt: SAFE_CAST(SPLIT(wt, '/')[SAFE_OFFSET(2)] AS INT64).",
+      "table": "noonbifood.product.restaurant_search_orders"
+    },
+    "CTR": {
+      "definition": "Click-Through Rate — proportion of impressions that resulted in a click. NOT a stored column, compute on the fly.",
+      "formula": "SAFE_DIVIDE(Clicks, Frequency)",
+      "table": "noonbifood.product.restaurant_search_orders"
+    },
+    "Search_CR": {
+      "definition": "Search Conversion Rate — proportion of clicks that resulted in an order. NOT a stored column, compute on the fly.",
+      "formula": "SAFE_DIVIDE(Orders, Clicks)",
+      "table": "noonbifood.product.restaurant_search_orders"
+    },
+    "Impression_CR": {
+      "definition": "Impression-to-Order rate — proportion of impressions that resulted in an order. NOT a stored column, compute on the fly.",
+      "formula": "SAFE_DIVIDE(Orders, Frequency)",
+      "table": "noonbifood.product.restaurant_search_orders"
+    }
+  },
+
+  "pipeline_logic": {
+    "step_1_outlet_map": {
+      "description": "Maps outlet_code to restaurant_code (Rx_Code) and restaurant name. UPPER+TRIM applied for consistency.",
+      "source": "noonbifood.sales.outlet_status_complete"
+    },
+    "step_2_aggregated_cuisines": {
+      "description": "Aggregates consumer cuisine tags per outlet into a comma-separated string.",
+      "source": "noonbitechfd.dwh_food_mpnoon.outlet_consumer_and_filter_cuisines"
+    },
+    "step_3_restaurant_tags": {
+      "description": "Joins cuisine tags and item tags from restaurant_cuisine_tags. QUALIFY ROW_NUMBER()=1 deduplicates to one row per restaurant_name (random outlet selected).",
+      "source": "noonbifood.product.restaurant_cuisine_tags"
+    },
+    "step_4_raw_events": {
+      "description": "Pulls funnel events from raw_events_v2 filtered to outlet_impression_v2, page_outlet_v2, transaction_v2. Joins to session_segments_nat (non-bounced, non-moved AE sessions) and session_zone (city/hub). Time adjusted to UTC+4. Only events with a non-null, non-single-character search keyword (event_misc.sk) and non-null outlet_code are kept.",
+      "source": "noonprd-mp-analytics.noon_analytics_tool.raw_events_v2",
+      "window": "CURRENT_DATE - 14 to CURRENT_DATE - 1"
+    },
+    "step_5_valid_orders": {
+      "description": "Non-failed orders from daily_orders in the same 14-day window, AE only.",
+      "source": "noonbifood.reporting.daily_orders"
+    },
+    "step_6_anchors": {
+      "description": "Per session × outlet × search: finds First_Impression_Time (first outlet_impression_v2) and First_Click_Time (first page_outlet_v2).",
+      "filter": "Both must be non-null AND First_Click_Time > First_Impression_Time to form a Valid_Anchor."
+    },
+    "step_7_session_grain": {
+      "description": "For each session × outlet × search with a valid anchor: records whether an order was placed (Had_Order = 1) — transaction_v2 event after First_Click_Time matching a valid non-failed order.",
+      "grain": "session_id × Date × City × Hub × MealTime × Searches × Rx_Code × Restaurant"
+    },
+    "step_8_all_impressions": {
+      "description": "All outlet_impression_v2 events aggregated to session × outlet × search grain. Computes Session_Best_Position = MIN(Position) per session.",
+      "note": "All impressions are included regardless of whether a valid anchor exists. This is the denominator for Frequency."
+    },
+    "step_9_final_aggregation": {
+      "description": "LEFT JOINs All_Impressions → Session_Grain → Valid_Search_Orders → Restaurant_Tags. Aggregates to Date × City × Hub × MealTime × Searches × Rx_Code grain.",
+      "note": "Impressions without clicks still appear (Session_Grain will be NULL, Clicks and Orders will be 0 for those rows)."
+    }
+  },
+
+  "sql_rules": {
+    "partition_rules": {
+      "restaurant_search_orders": "No partition column. Filter on Date (DATE type). Window is always last 14 days from run date."
+    },
+    "key_filters": {
+      "country": "country = 'ae' in both session_segments_nat and daily_orders",
+      "session_quality": "is_moved <> 1 AND is_bounce <> 1 in session_segments_nat",
+      "search_keyword": "event_misc.sk IS NOT NULL AND LENGTH(TRIM(event_misc.sk)) > 1",
+      "outlet_code": "UPPER(TRIM(event_misc.oc)) IS NOT NULL",
+      "order_status": "order_status <> 'failed' in daily_orders"
+    },
+    "time_adjustment": "All event times adjusted to UAE timezone: TIMESTAMP_ADD(event_time, INTERVAL 4 HOUR)",
+    "position_extraction": "SAFE_CAST(SPLIT(event_misc.wt, '/')[SAFE_OFFSET(2)] AS INT64) — position is the 3rd segment of the wt field.",
+    "deduplication": "Restaurant_Tags uses QUALIFY ROW_NUMBER() OVER (PARTITION BY restaurant_name ORDER BY RAND()) = 1 to pick one row per restaurant name at random.",
+    "attribution_logic": "An order is attributed to search only if: (1) the session had a valid impression for that outlet × keyword, (2) the session had a click after the impression, (3) a transaction_v2 event for the same outlet exists after First_Click_Time, (4) the order_id matches a non-failed order in daily_orders.",
+    "metrics_to_compute": "CTR, Search_CR, and Impression_CR are NOT stored in the table. Always compute: CTR = SAFE_DIVIDE(Clicks, Frequency), Search_CR = SAFE_DIVIDE(Orders, Clicks), Impression_CR = SAFE_DIVIDE(Orders, Frequency).",
+    "joins": {
+      "outlet_map": "UPPER(TRIM(outlet_code)) on both sides",
+      "restaurant_tags": "LOWER(TRIM(restaurant_name)) on both sides",
+      "valid_orders": "transaction_id = order_id AND outlet_code match (both UPPER+TRIM)"
+    }
+  },
+
+  "example_queries": [
+    {
+      "question": "Overall search CTR, CR and GMV for last 14 days by keyword",
+      "sql": "SELECT Searches, SUM(Frequency) AS Impressions, SUM(Clicks) AS Clicks, SUM(Orders) AS Orders, SUM(GMV) AS GMV, ROUND(SAFE_DIVIDE(SUM(Clicks), SUM(Frequency)), 3) AS CTR, ROUND(SAFE_DIVIDE(SUM(Orders), SUM(Clicks)), 3) AS Search_CR FROM noonbifood.product.restaurant_search_orders GROUP BY 1 ORDER BY Impressions DESC"
+    },
+    {
+      "question": "Restaurant-level search performance — top restaurants by search orders",
+      "sql": "SELECT Rx_Code, Restaurant, SUM(Frequency) AS Impressions, SUM(Clicks) AS Clicks, SUM(Orders) AS Orders, SUM(GMV) AS GMV, ROUND(SAFE_DIVIDE(SUM(Orders), SUM(Clicks)), 3) AS Search_CR, ROUND(AVG(Avg_Position), 1) AS Avg_Position FROM noonbifood.product.restaurant_search_orders GROUP BY 1, 2 ORDER BY Orders DESC"
+    },
+    {
+      "question": "Search CR by mealtime",
+      "sql": "SELECT MealTime, SUM(Frequency) AS Impressions, SUM(Clicks) AS Clicks, SUM(Orders) AS Orders, ROUND(SAFE_DIVIDE(SUM(Orders), SUM(Clicks)), 3) AS Search_CR FROM noonbifood.product.restaurant_search_orders GROUP BY 1 ORDER BY Orders DESC"
+    },
+    {
+      "question": "Search CR by city",
+      "sql": "SELECT City, SUM(Frequency) AS Impressions, SUM(Clicks) AS Clicks, SUM(Orders) AS Orders, ROUND(SAFE_DIVIDE(SUM(Orders), SUM(Clicks)), 3) AS Search_CR FROM noonbifood.product.restaurant_search_orders GROUP BY 1 ORDER BY Orders DESC"
+    },
+    {
+      "question": "Keywords with high impressions but low CR (search gaps)",
+      "sql": "SELECT Searches, SUM(Frequency) AS Impressions, SUM(Orders) AS Orders, ROUND(SAFE_DIVIDE(SUM(Orders), SUM(Clicks)), 3) AS Search_CR FROM noonbifood.product.restaurant_search_orders GROUP BY 1 HAVING SUM(Frequency) > 100 ORDER BY Search_CR ASC LIMIT 50"
+    },
+    {
+      "question": "Position vs CR analysis — does ranking position affect conversion?",
+      "sql": "SELECT Avg_Position, COUNT(*) AS rows, SUM(Frequency) AS Impressions, SUM(Orders) AS Orders, ROUND(SAFE_DIVIDE(SUM(Orders), SUM(Clicks)), 3) AS Search_CR FROM noonbifood.product.restaurant_search_orders GROUP BY 1 ORDER BY 1 ASC"
+    }
+  ]
+}

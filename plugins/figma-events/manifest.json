@@ -1,0 +1,13 @@
+{
+  "name": "figma-events",
+  "version": "1.0.0",
+  "description": "Generate Noon Food analytics event specs from a Figma screen URL",
+  "author": "noon",
+  "skills": [
+    {
+      "name": "figma-events",
+      "description": "Generate impression + click event YAML specs from a Figma URL, following the Noon event structure",
+      "path": "skills/figma-events/SKILL.md"
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+{
+  "overview": {
+    "description": "Admon (Ad Monetisation) is NoonFood's CPC-based paid listing and keyword search product that allows restaurant partners to bid for premium placement on different assets of our app. Campaigns are configured with a restaurant / brand, total budget, bid strategy, and campaign duration. Performance is tracked daily via spend, clicks, bid, GMV, and orders.",
+    "primary_tables": [
+      "noonbifood.sales.admon_info",
+      "noonbifood.sales.admon_daily",
+      "noonbifood.growthv1.admon_daily_summary"
+    ]
+  },
+
+  "glossary": {
+    "Admon": "Ad Monetisation — NoonFood's paid restaurant listing/placement product.",
+    "CPC": "Cost Per Click — total_spent divided by total_clicks for a campaign.",
+    "Effective Bid": "Revenue divided by clicks for a given day. Formula: SAFE_DIVIDE(revenue, clicks). Represents realised value per click, not the set bid.",
+    "ROI": "Return on Investment — GMV divided by total spend. Formula: SAFE_DIVIDE(gmv, total_spent). Higher is better.",
+    "Budget": "Original total campaign budget allocated by the restaurant.",
+    "Updatedbudget": "Budget after any modifications. Always use Updatedbudget (not budget) for financial and churn analysis. Exclude rows where Updatedbudget = 0.",
+    "Budgetperday": "Daily budget = budget / UpdatedCampaigndays. Pre-computed column in admon_info.",
+    "SpentPercent": "Percentage of total budget consumed so far. Formula: total_spent / Budget * 100.",
+    "TimePercent": "Percentage of campaign duration elapsed. Formula: days_elapsed / total_campaign_days * 100.",
+    "spend_status": "Health label comparing SpentPercent vs TimePercent. Actual column values are granular — use LIKE patterns in SQL: underspending → LIKE 'underspend%', overspending → LIKE 'overspend%', expired on target → 'expired_ontarget', expired underspent → 'expired_underspent'. NEVER filter with simplified labels like 'underspending' or 'overspending' directly — they do not exist in the column.",
+    "RevenueLoss": "Estimated revenue lost due to underspending relative to expected pace.",
+    "campaign_status": "Current lifecycle state. Values: 'to_be_started', 'live', 'cancelled', 'finished'.",
+    "status_code": "Approval/lifecycle status stored in admon_info. Used in churn analysis and campaign filtering alongside campaign_status.",
+    "is_free_campaign": "Integer flag (0/1) or NULL. Paid campaign filter: (is_free_campaign = 0 OR is_free_campaign IS NULL). NULL should always be treated as paid.",
+    "auto_bid": "CRITICAL: Stored as STRING ('true'/'false') in admon_info — NOT a boolean. Always cast with: IF(auto_bid = 'true', 1, 0). Never treat directly as boolean.",
+    "bid_strategy": "Bidding approach: 'growth' or 'fixed'.",
+    "budget_type": "How budget is allocated: 'fixed' or 'percentage'.",
+    "is_live": "Binary flag — campaign is currently active and serving impressions.",
+    "is_canceled": "Binary flag — campaign was manually cancelled before end date.",
+    "Campaigndays": "Total planned duration of the campaign in days.",
+    "UpdatedCampaigndays": "Recalculated campaign days after budget top-ups. Always prefer this over Campaigndays.",
+    "MTDdays": "Month-to-date days elapsed since campaign start or month start.",
+    "impressions": "Total number of times the ad was shown to users.",
+    "distinct_impressions": "Count of unique users who saw the ad.",
+    "bid": "The CPC bid amount set by the partner or auto-computed.",
+    "gmv": "Gross Merchandise Value — total order value attributed to the ad campaign.",
+    "comm_gmv": "Commissioned GMV — the share of GMV on which NoonFood earns commission.",
+    "new_customers": "New customers who ordered via the campaign (first-time buyers at this outlet).",
+    "repeat_customers": "Returning customers who reordered via the campaign.",
+    "am": "Account Manager — the NoonFood team member managing the partner account.",
+    "Churn": "A restaurant is churned if its campaign ended and NO new admon campaign was found in admon_daily for that rcode within 31 days after end_at. Detected by: COUNT(DISTINCT ad_code) FROM admon_daily WHERE day BETWEEN end_at+1 AND end_at+31 AND rcode = <rcode> = 0."
+  },
+
+  "tables": {
+    "noonbifood.sales.admon_info": {
+      "description": "Campaign-level snapshot table. One row per campaign (code). Contains campaign configuration, budget tracking, spend health, and aggregated performance metrics.",
+      "grain": "One row per ad campaign (code = ad_code)",
+      "partition": "NONE — do not add a day filter. Filter by country_code, campaign_status, or date columns (start_at, end_at) directly.",
+      "join_key": "code — matches admon_daily.ad_code",
+      "key_columns": {
+    "restaurant_name": "Name of the restaurant running the ad [STRING]",
+    "idpo": "Internal restaurant/partner outlet ID [INTEGER]",
+    "creation_date": "Date the ad campaign was created [DATE]",
+    "id_ad": "Unique ad identifier [INTEGER]",
+    "code": "Ad campaign code [STRING]",
+    "rcode": "Restaurant-level campaign reference code [STRING]",
+    "country_code": "Country where the campaign runs (e.g. ae) [STRING]",
+    "currency_code": "Currency of the campaign budget (e.g. AED) [STRING]",
+    "status_code": "Approval status of the campaign (e.g. approved) [STRING]",
+    "start_at": "Campaign start date [DATE]",
+    "end_at": "Campaign end date [DATE]",
+    "id_ad_version": "Version ID of the ad [INTEGER]",
+    "is_active": "Whether the ad is currently active [INTEGER]",
+    "is_active_version": "Whether this is the active version of the ad [INTEGER]",
+    "outlets": "List of outlet codes the campaign applies to [STRING]",
+    "budget": "Total campaign budget [FLOAT]",
+    "total_clicks": "Total clicks received by the campaign [INTEGER]",
+    "total_spent": "Total amount spent so far [FLOAT]",
+    "Clicks_target": "Target click count for the campaign [FLOAT]",
+    "is_live": "Whether the campaign is currently live [INTEGER]",
+    "campaign_status": "Current status label of the campaign (e.g. to_be_started,live,canceled,finished) [STRING]",
+    "is_canceled": "Whether the campaign has been canceled [INTEGER]",
+    "Spendperday": "Calculated spend per day based on budget and days [FLOAT]",
+    "Campaigndays": "Total duration of the campaign in days [INTEGER]",
+    "MTDdays": "Month-to-date days elapsed [INTEGER]",
+    "cancelled_date": "Date the campaign was canceled, if applicable [DATE]",
+    "CampaigndaysforCancelled": "Effective campaign days accounting for cancellation [FLOAT]",
+    "parent_ad": "Parent ad ID if this is a child campaign [FLOAT]",
+    "is_free_campaign": "Whether this is a free/complimentary campaign [INTEGER]",
+    "ad_type": "Type of ad (e.g. listing,search) [STRING]",
+    "keyword": "Keyword targeting for the campaign [STRING]",
+    "auto_bid": "Whether auto-bidding is enabled [STRING — values: 'true' or 'false', NOT a boolean. Always cast: IF(auto_bid = 'true', 1, 0). Never compare directly as boolean.]",
+    "bid_strategy": "Bidding strategy used (e.g. growth,balance,awareness) [STRING]",
+    "budget_type": "Type of budget allocation (e.g. fixed) [STRING]",
+    "budget_percentage": "Budget as a percentage (if applicable) [FLOAT]",
+    "is_auto_topup_enabled": "Whether auto top-up is enabled [BOOLEAN]",
+    "is_successful_topup": "Whether the last top-up was successful [BOOLEAN]",
+    "is_topup_triggered": "Whether a top-up has been triggered [BOOLEAN]",
+    "auto_top_up_budget": "Budget amount for auto top-up [FLOAT]",
+    "Updatedbudget": "Budget after any top-ups or updates [FLOAT]",
+    "UpdatedCampaigndays": "Campaign days recalculated after budget updates [INTEGER]",
+    "Budgetperday": "Daily budget derived from updated budget and days [FLOAT]",
+    "SpentPercent": "Percentage of budget spent so far [FLOAT]",
+    "TimePercent": "Percentage of campaign duration elapsed [FLOAT]",
+    "spend_status": "Spend health label relative to time progress (e.g. overspend_10below,underspend_10below,overspend_10,underspend_10,overspend_30,underspend_20,overspend_20,overspend_40plus,underspend_30,underspend_40below,expired_ontarget,expired_underspent) [STRING]",
+    "RevenueLoss": "Estimated revenue loss from under-delivery [FLOAT]",
+    "rw": "Row number or ranking field [FLOAT]",
+    "Nextadmon": "Next ad monitoring checkpoint [FLOAT]",
+    "week": "Week number of the campaign [INTEGER]",
+    "Renewal": "Renewal flag or count [FLOAT]",
+    "am": "Account manager identifier [FLOAT]",
+    "orders": "Number of orders attributed to the campaign [FLOAT]",
+    "gmv": "Gross merchandise value attributed to the campaign [FLOAT]",
+    "new_customers": "New customers acquired via the campaign [FLOAT]",
+    "repeat_customers": "Repeat customers from the campaign [FLOAT]",
+    "comm_gmv": "Commissioned GMV from the campaign [FLOAT]",
+    "bid": "Bid amount set for the campaign [FLOAT]",
+    "City": "City where the campaign is running [STRING]",
+    "impressions": "Total impressions served by the campaign [FLOAT]",
+    "distinct_impressions": "Distinct/unique impressions served by distinct customers[FLOAT]"
+    }
+    },
+
+    "noonbifood.sales.admon_daily": {
+      "description": "Day-level performance table. One row per campaign per day. Use for daily spend, pacing, and effective bid analysis.",
+      "grain": "One row per ad_code per day",
+      "partition_column": "day",
+      "join_key": "ad_code — matches admon_info.code",
+      "key_columns": {
+    "day": "Date of the ad performance record [DATE]",
+    "ad_code": "Ad campaign code [STRING]",
+    "rcode": "Restaurant-level campaign reference code [STRING]",
+    "rname": "Restaurant name [STRING]",
+    "country": "Country code where the campaign ran (e.g. ae) [STRING]",
+    "Budget": "Daily budget allocated for the campaign [FLOAT]",
+    "revenue": "Revenue attributed to the campaign on that day [FLOAT]",
+    "clicks": "Number of clicks received on that day [INTEGER]",
+    "week": "ISO week number of the record [INTEGER]",
+    "month": "Month start date of the record [DATE]",
+    "year": "Year of the record [INTEGER]",
+    "am": "Account manager name responsible for the campaign [STRING]",
+    "idpo": "Internal restaurant/partner outlet ID [INTEGER]",
+    "ad_type": "Type of ad (e.g. listing) [STRING]",
+    "is_free_campaign": "Whether this is a free/complimentary campaign (0/1) [INTEGER]",
+    "bid": "Bid amount used on that day [FLOAT]",
+    "City": "City where the campaign ran [STRING]"
+      }
+    }
+  },
+
+  "metrics": {
+    "ROI": {
+      "definition": "Return on Investment for an admon campaign.",
+      "formula": "SAFE_DIVIDE(gmv, total_spent)",
+      "table": "noonbifood.sales.admon_info"
+    },
+    "CPC": {
+      "definition": "Cost Per Click.",
+      "formula": "SAFE_DIVIDE(total_spent, total_clicks)",
+      "table": "noonbifood.sales.admon_info",
+      "daily_variant": "SAFE_DIVIDE(Budget, clicks) from admon_daily"
+    },
+    "effective_bid": {
+      "definition": "Actual revenue delivered per click on a given day.",
+      "formula": "SAFE_DIVIDE(revenue, clicks)",
+      "table": "noonbifood.sales.admon_daily",
+      "notes": "This is the realised value vs the partner's set bid amount."
+    },
+    "spend_pacing": {
+      "definition": "How well campaign spend tracks against elapsed time.",
+      "logic": "If SpentPercent < TimePercent → underspending. If SpentPercent > TimePercent → overspending.",
+      "spend_status_values": {
+        "underspend group (use: spend_status LIKE 'underspend%')": "underspend_10below, underspend_10, underspend_20, underspend_30, underspend_40below — SpentPercent significantly < TimePercent",
+        "overspend group (use: spend_status LIKE 'overspend%')": "overspend_10below, overspend_10, overspend_20, overspend_30, overspend_40plus — SpentPercent significantly > TimePercent",
+        "expired_ontarget": "Campaign ended on budget — use spend_status = 'expired_ontarget'",
+        "expired_underspent": "Campaign ended underspent — use spend_status = 'expired_underspent'",
+        "CRITICAL": "Never use spend_status = 'underspending' or = 'overspending' — these values do not exist in the column and will return 0 rows."
+      }
+    },
+    "churn": {
+      "definition": "Campaign ended with no renewal within 31 days after end_at.",
+      "formula": "Correlated subquery: COUNT(DISTINCT ad_code) FROM admon_daily WHERE day BETWEEN end_at+1 AND end_at+31 AND rcode = ai.rcode. If = 0 → churned.",
+      "standard_filters": "Updatedbudget > 0, country_code = 'ae', ad_type = 'listing', (is_free_campaign = 0 OR is_free_campaign IS NULL)"
+    }
+  },
+
+  "campaign_lifecycle": {
+    "statuses": {
+      "to_be_started": "Approved and scheduled — start_at is in the future.",
+      "live": "Currently active — is_live = 1, within start_at/end_at window.",
+      "cancelled": "Terminated early — is_canceled = 1, cancelled_date populated.",
+      "finished": "Ran full duration — end_at has passed."
+    },
+    "flow": "to_be_started → live → finished | cancelled"
+  },
+
+  "sql_rules": {
+    "table_join": "JOIN admon_daily TO admon_info on: admon_daily.ad_code = admon_info.code",
+    "country_column_naming": "admon_info → country_code. admon_daily → country. Both are lowercase strings (e.g. 'ae', 'sa'). Never mix these column names across tables.",
+    "partition_rules": {
+      "admon_daily": "MUST always filter on `day`.",
+      "admon_info": "NO partition — no day filter needed. Filter on start_at or end_at if date scoping is required.",
+      "admon_daily_summary": "Filter on `day` as needed."
+    },
+    "week_derivation": "Always use date_trunc(day, week(Monday)) — not ISO week number field.",
+    "auto_bid_cast": "auto_bid is STRING in admon_info. Cast as IF(auto_bid = 'true', 1, 0). Do not use directly as boolean.",
+    "paid_campaign_filter": "To get paid campaigns: WHERE (is_free_campaign = 0 OR is_free_campaign IS NULL). NULL = paid.",
+    "budget_exclusion": "Always add AND Updatedbudget > 0 in financial and churn queries on admon_info.",
+    "listing_filter": "Standard analyses add AND ad_type = 'listing' to focus on core campaigns.",
+    "churn_date_arithmetic": "Date arithmetic uses DATE + integer: end_at + 1, end_at + 31. BigQuery supports this directly on DATE columns.",
+    "looker_date_params": "@DS_START_DATE and @DS_END_DATE are passed as STRING 'YYYYMMDD'. Parse with PARSE_DATE('%Y%m%d', @DS_START_DATE).",
+    "divide_by_zero": "Always use SAFE_DIVIDE(a, b) or NULLIF(col, 0) in all denominators — clicks and spend can be 0.",
+    "admon_summary_select": "SELECT DISTINCT date_trunc(day, week(Monday)) as Week, date_trunc(day, month) as month, * except(Free_Planned_click), Free_Planned_click as Free_planned_click FROM noonbifood.growthv1.admon_daily_summary"
+  },
+
+  "example_queries": [
+    {
+      "question": "Base daily admon performance with campaign metadata — last 6 months",
+      "sql": "SELECT date_trunc(day, month) as month, date_trunc(day, week(Monday)) as week, day, ad_code, ad.ad_type, a.rcode, rname, country as country_code, a.Budget, revenue, clicks, year, a.am, a.idpo, a.City, (CASE WHEN ad.is_free_campaign = 1 THEN 1 ELSE 0 END) as is_free_campaign, IF(ad.auto_bid = 'true', 1, 0) as auto_bid FROM noonbifood.sales.admon_daily AS a LEFT JOIN noonbifood.sales.admon_info ad ON a.ad_code = ad.code WHERE date_trunc(a.day, month) > date_trunc(current_date - 180, month) AND day < current_date"
+    },
+    {
+      "question": "Overview table from admon_daily_summary",
+      "sql": "SELECT DISTINCT date_trunc(day, week(Monday)) as Week, date_trunc(day, month) as month, * except(Free_Planned_click), Free_Planned_click as Free_planned_click FROM noonbifood.growthv1.admon_daily_summary"
+    },
+    {
+      "question": "Churned restaurants — campaigns that ended with no renewal within 31 days (UAE paid listing)",
+      "sql": "SELECT *, date_trunc(start_at, month) as month, date_trunc(end_at + 1, month) as end_month FROM (SELECT ai.start_at, ai.end_at, ai.rcode, ai.code as ad_code, ai.restaurant_name, ai.status_code, ai.budget, ai.Updatedbudget, ai.am, ai.City, (SELECT COUNT(DISTINCT ad_code) FROM noonbifood.sales.admon_daily AS a WHERE a.day BETWEEN ai.end_at + 1 AND ai.end_at + 31 AND a.rcode = ai.rcode) AS start_at_feb, orders, gmv, total_spent FROM noonbifood.sales.admon_info AS ai WHERE end_at BETWEEN PARSE_DATE('%Y%m%d', @DS_START_DATE) AND PARSE_DATE('%Y%m%d', @DS_END_DATE) AND Updatedbudget > 0 AND ai.country_code = 'ae' AND ai.ad_type = 'listing' AND (ai.is_free_campaign = 0 OR is_free_campaign IS NULL)) vw1 WHERE start_at_feb = 0"
+    },
+    {
+      "question": "Live campaigns in UAE with ROI and spend status",
+      "sql": "SELECT restaurant_name, code, Updatedbudget, total_spent, gmv, ROUND(SAFE_DIVIDE(gmv, total_spent), 2) AS roi, SpentPercent, TimePercent, spend_status FROM noonbifood.sales.admon_info WHERE country_code = 'ae' AND campaign_status = 'live' AND ad_type = 'listing' AND (is_free_campaign = 0 OR is_free_campaign IS NULL) AND Updatedbudget > 0 ORDER BY roi DESC"
+    },
+    {
+      "question": "Average CPC for paid listing campaigns in UAE",
+      "sql": "SELECT ROUND(SAFE_DIVIDE(SUM(total_spent), SUM(total_clicks)), 3) AS avg_cpc FROM noonbifood.sales.admon_info WHERE country_code = 'ae' AND campaign_status = 'live' AND ad_type = 'listing' AND (is_free_campaign = 0 OR is_free_campaign IS NULL)"
+    },
+    {
+      "question": "Daily effective bid for a campaign over last 30 days",
+      "sql": "SELECT day, ad_code, rname, clicks, revenue, ROUND(SAFE_DIVIDE(revenue, clicks), 3) AS effective_bid, Budget FROM noonbifood.sales.admon_daily WHERE day >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) AND country = 'ae' AND ad_code = '<AD_CODE>' ORDER BY day DESC"
+    },
+    {
+      "question": "Underspending campaigns in UAE",
+      "sql": "SELECT restaurant_name, code, Updatedbudget, total_spent, SpentPercent, TimePercent, RevenueLoss FROM noonbifood.sales.admon_info WHERE country_code = 'ae' AND campaign_status = 'live' AND spend_status LIKE 'underspend%' AND ad_type = 'listing' AND (is_free_campaign = 0 OR is_free_campaign IS NULL) AND Updatedbudget > 0 ORDER BY RevenueLoss DESC"
+    },
+    {
+      "question": "AM-wise admon GMV and ROI for UAE",
+      "sql": "SELECT am, COUNT(DISTINCT code) AS campaigns, SUM(Updatedbudget) AS total_budget, SUM(total_spent) AS total_spent, SUM(gmv) AS total_gmv, ROUND(SAFE_DIVIDE(SUM(gmv), SUM(total_spent)), 2) AS roi FROM noonbifood.sales.admon_info WHERE country_code = 'ae' AND ad_type = 'listing' AND Updatedbudget > 0 AND (is_free_campaign = 0 OR is_free_campaign IS NULL) GROUP BY am ORDER BY total_gmv DESC"
+    }
+  ]
+}

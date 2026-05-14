@@ -1,0 +1,349 @@
+{
+  "overview": {
+    "description": "RRE (Restaurant Recommendation Engine) is NoonFood's personalisation pipeline that generates ranked restaurant recommendations per customer per mealtime. It combines order history affinity, browsing behaviour signals, and collaborative filtering (restaurant similarity) to produce a ranked list. Final output tables are consumed by the app and further boosted online in real-time.",
+    "primary_tables": [
+      "noonbifood.product.rre_recommendation_prod",
+      "noonbifood.product.rre_merged_recommendation_prod"
+    ],
+    "schema": "noonbifood.product",
+    "country": "ae"
+  },
+
+  "dag": {
+    "dag_id": "project_rre",
+    "main_chain": [
+      "rre_mealtime",
+      "rre_clustering (depends: rre_mealtime)",
+      "rre_cao90p",
+      "rre_cx_rx_affinity (depends: rre_cao90p)",
+      "rre_cx_preferred_rx (depends: rre_cx_rx_affinity, rre_mealtime)",
+      "rre_production (depends: rre_mealtime, rre_clustering, rre_cx_rx_affinity, rre_cx_preferred_rx, rre_cao90p)"
+    ],
+    "parallel_tasks_not_in_main_chain": [
+      "rx_popularity_score",
+      "rre_disc_affinity",
+      "rre_aov_cr_factor",
+      "rre_rating_penalty"
+    ],
+    "online_realtime_boosters_applied_after_dag": [
+      "Small/New Restaurant Factor",
+      "Customer Discount Factor",
+      "Cuisine Affinity Factor"
+    ]
+  },
+
+  "glossary": {
+    "CAO": "Customer Affinity by Orders — affinity signal derived from delivered order history.",
+    "CAC": "Customer Affinity by Checkout — funnel signal from page_checkout events.",
+    "CAATC": "Customer Affinity by Add-to-Cart — funnel signal from add_to_cart events.",
+    "CAOV": "Customer Affinity by Outlet Visit — funnel signal from page_outlet events.",
+    "CAS": "Customer Affinity by Search — funnel signal from search_dishes_item_click or search_restaurants_tile_click events.",
+    "CAO90": "Older order-based affinity covering 90–360 days ago. Used as historical fallback in rre_cx_preferred_rx for customers with limited recent signals.",
+    "Mealtime": "Time-based slot derived from mpnoon_time_slot: breakfast, lunch, snacks, dinner, post_dinner.",
+    "Value": "Period-decayed weighted score per customer × mealtime × restaurant. Computed as ROUND(SUM(period_weight × 1), 0) where each order/session contributes 1 unit multiplied by its recency weight.",
+    "Percentage": "Share of a restaurant's Value out of the total Value for that customer × mealtime. Formula: ROUND(Value / NULLIF(SUM(Value) OVER (PARTITION BY customer_id, MealTime), 0), 3).",
+    "RNK": "Row number rank within customer × mealtime partition, ordered by Value DESC. Used to cap results (top 3 for cao90, top 20 for rest_affinity).",
+    "similarity_score": "Cosine-style restaurant similarity. Base: common_customers / (√total_customers_rx1 × √total_customers_rx2). Adjusted by deboost list (× 0.3) and rating penalty (× 0.7 if avg_rating < 3.5).",
+    "deboost_list": "Hardcoded list of restaurant_codes that receive a × 0.3 penalty on similarity_score.",
+    "low_rating_penalty": "0.7 multiplier applied to similarity_score for restaurants with weighted_avg_rating < 3.5 AND total_ratings >= 5.",
+    "aov_cr_factor": "Boost multiplier (range 1.0–1.3) based on AOV × Conversion Rate. Formula: LEAST(1.3, GREATEST(1.0, 1 + 0.3 × (aov_cr - p10) / (p95 - p10))) where p10/p95 are 10th/95th percentiles across all restaurants. Joined into similar_restaurant_clustering but NOT part of the main DAG chain.",
+    "commission_swap": "Re-ranking mechanism in production: similar restaurants are sorted by commission_per_order ASC and assigned score positions from total_score DESC — so the lowest-commission restaurant inherits the highest score.",
+    "total_score": "Final ranking score in rre_recommendation_prod. For similar_rx: LOG(1 + preferred_rx_score) × similarity_score. For preferred_rx: avg_top10_similar_score × (0.8 + RAND() × 0.2) × mealtime_match_factor. mealtime_match_factor = 0.3 if restaurant does not serve that mealtime, else 1.0.",
+    "result_type": "Source label for each recommendation row. Values: preferred_rx (direct affinity, rank ≤ 7), preferred_rx_cao90 (historical fallback, rank 8–10), top_similar (organic similar restaurant), ads_live_top_similar (similar restaurant with a live admon campaign).",
+    "mealtime_cross_score": "Matrix that partially applies affinity from one mealtime to adjacent mealtimes. Example: lunch affinity contributes 0.4 to dinner and 0.3 to snacks. Full matrix stored in rre_cx_preferred_rx mealtime_association CTE."
+  },
+
+  "tables": {
+    "noonbifood.product.rre_recommendation_prod": {
+      "description": "Final output table. Ranked restaurant recommendations per customer per mealtime. One row per customer × mealtime × restaurant. Produced by rre_production task.",
+      "grain": "One row per customer_id × mealtime × restaurant_code",
+      "partition": "NONE — no day filter. Filter by customer_id, mealtime, city, or result_type as needed.",
+      "key_columns": {
+        "customer_id": "Customer identifier [STRING]",
+        "mealtime": "Mealtime slot. Values: breakfast, lunch, snacks, dinner, post_dinner [STRING]",
+        "city": "Customer's city (lowercased) [STRING]",
+        "result_type": "Source of the recommendation. Values: preferred_rx (rank ≤ 7), preferred_rx_cao90 (rank 8–10), top_similar (organic), ads_live_top_similar (live admon campaign restaurant). [STRING]",
+        "restaurant_code": "Recommended restaurant code [STRING]",
+        "restaurant_name": "Recommended restaurant name [STRING]",
+        "total_score": "Final ranking score. For similar_rx: LOG(1 + preferred_rx_score) × similarity_score. For preferred_rx: avg_top10_similar_score × (0.8 + RAND() × 0.2) × mealtime_match_factor [FLOAT]",
+        "final_rank": "Rank of the restaurant for this customer × mealtime, ordered by total_score DESC [INTEGER]"
+      }
+    },
+
+    "noonbifood.product.rre_merged_recommendation_prod": {
+      "description": "Re-ranked version of rre_recommendation_prod. Applies a 0.6 score penalty to dessert/cake cuisine restaurants (cakes, desserts, sweet_shop, pastries) to reduce their ranking dominance.",
+      "grain": "One row per customer_id × mealtime × restaurant_code",
+      "partition": "NONE",
+      "key_columns": {
+        "customer_id": "Customer identifier [STRING]",
+        "mealtime": "Mealtime slot [STRING]",
+        "city": "Customer's city (lowercased) [STRING]",
+        "result_type": "Source label — same values as rre_recommendation_prod [STRING]",
+        "restaurant_code": "Recommended restaurant code [STRING]",
+        "restaurant_name": "Recommended restaurant name [STRING]",
+        "total_score": "Score after applying 0.6 penalty for dessert/cake cuisines on top of rre_recommendation_prod total_score [FLOAT]",
+        "final_rank": "Final rank after re-scoring [INTEGER]"
+      }
+    },
+
+    "noonbifood.product.rre_mealtime_flags": {
+      "description": "Boolean flags per restaurant indicating which mealtimes it is active/relevant for. Derived from order history mealtime distribution. Used as a filter in clustering and production to ensure mealtime-relevant matching.",
+      "grain": "One row per restaurant_code",
+      "partition": "NONE",
+      "key_columns": {
+        "restaurant_code": "Restaurant identifier [STRING]",
+        "is_breakfast": "True if restaurant is active during breakfast [BOOLEAN]",
+        "is_lunch": "True if restaurant is active during lunch [BOOLEAN]",
+        "is_snacks": "True if restaurant is active during snacks [BOOLEAN]",
+        "is_dinner": "True if restaurant is active during dinner [BOOLEAN]",
+        "is_post_dinner": "True if restaurant is active post-dinner [BOOLEAN]"
+      }
+    },
+
+    "noonbifood.product.similar_restaurant_clustering": {
+      "description": "For each restaurant, a ranked list of similar restaurants based on shared customer overlap (collaborative filtering). Produced by rre_clustering task. Used in rre_production to expand recommendations beyond a customer's direct order history.",
+      "grain": "One row per base_restaurant_code × similar_restaurant_code × city",
+      "partition": "NONE",
+      "join_key": "base_restaurant_code — matches restaurant_code in rre_cx_preferred_rx",
+      "key_columns": {
+        "result_type": "top_similar (organic similar restaurant) or ads_live_top_similar (similar restaurant that has a currently live admon campaign and was not already in the top 60 organic results) [STRING]",
+        "city": "City of the restaurant pair (lowercased) [STRING]",
+        "base_restaurant_code": "The anchor restaurant being matched from [STRING]",
+        "base_restaurant_name": "Name of the anchor restaurant [STRING]",
+        "similar_restaurant_code": "The recommended similar restaurant [STRING]",
+        "similar_restaurant_name": "Name of the similar restaurant [STRING]",
+        "base_restaurant_platform_orders": "Total platform orders for the base restaurant in the last 180 days [INTEGER]",
+        "base_restaurant_platform_customers": "Total unique customers for the base restaurant [INTEGER]",
+        "similar_restaurant_platform_orders": "Total platform orders for the similar restaurant [INTEGER]",
+        "similar_restaurant_platform_customers": "Total unique customers for the similar restaurant [INTEGER]",
+        "common_customers": "Number of customers who ordered from both restaurants [INTEGER]",
+        "common_customer_orders_similar": "Total orders placed at the similar restaurant by shared customers [INTEGER]",
+        "similarity_score": "Final similarity after all adjustments. Base: ROUND(common_customers / (SQRT(total_customers_rx1) × SQRT(total_customers_rx2)), 4). Deboost penalty: × 0.3 if similar_restaurant_code is on deboost list. Rating penalty: × IFNULL(low_rating_penalty, 1) applied in final SELECT. [FLOAT]",
+        "rank": "Rank of similar restaurant for the base restaurant, ordered by similarity_score DESC. Top 60 kept per base restaurant per result_type. [INTEGER]",
+        "mealtime_category": "Dominant mealtime of the base restaurant [STRING]",
+        "aov_cr_factor": "AOV × CR boost multiplier joined from rre_aov_cr_factor. Formula: LEAST(1.3, GREATEST(1.0, 1 + 0.3 × (aov_cr - p10) / (p95 - p10))). Range: 1.0–1.3. NULL if restaurant not in aov_cr_factor table. [FLOAT]"
+      },
+      "sql_rules": {
+        "mealtime_matching": "Only restaurants sharing at least one mealtime flag are matched. Both rx1 and rx2 must have TRUE for the same mealtime in rre_mealtime_flags.",
+        "eligibility": "Only restaurants with >= 5 distinct customers in the last 180 days are included in clustering.",
+        "ads_live_priority": "ads_live_top_similar restaurants are those with a live admon campaign (end_at >= CURRENT_DATE in admon_info) that did NOT appear in the top 60 organic results."
+      }
+    },
+
+    "noonbifood.product.rre_cao90": {
+      "description": "Customer × restaurant affinity based on order history only, covering orders from 90–360 days ago (older history). Used as a fallback supplement in rre_cx_preferred_rx for customers with limited recent signals. Produced by rre_cao90p task.",
+      "grain": "One row per customer_id × MealTime × restaurant_code (top 3 per customer × mealtime)",
+      "partition": "NONE",
+      "key_columns": {
+        "customer_id": "Customer identifier [STRING]",
+        "MealTime": "Mealtime slot of the order [STRING]",
+        "restaurant_code": "Restaurant ordered from [STRING]",
+        "restaurant_name": "Restaurant name [STRING]",
+        "city": "City (lowercased) [STRING]",
+        "Value": "Period-decayed weighted order score. Formula: ROUND(SUM(CASE WHEN period='P1' THEN 2.5 WHEN period='P2' THEN 1.5 WHEN period='P3' THEN 0.5 END), 0) grouped by customer_id, MealTime, restaurant_code. Window: 90–360 days ago only. [FLOAT]",
+        "Torders": "Total orders by customer across all restaurants in the 90–360 day window [INTEGER]",
+        "Torders_Mealtime": "Total orders by customer for this mealtime in the 90–360 day window [INTEGER]",
+        "RNK": "Rank of restaurant for this customer × mealtime ordered by Value DESC. Capped at 3 (top 3 restaurants per customer × mealtime). [INTEGER]",
+        "Percentage": "ROUND(Value / SUM(Value) OVER (PARTITION BY customer_id, MealTime), 3) — share of this restaurant's score out of total for customer × mealtime [FLOAT]",
+        "affinity_type": "Always CAO90 [STRING]"
+      },
+      "period_decay": {
+        "P1": {"window": "90–180 days ago", "weight": 2.5},
+        "P2": {"window": "181–270 days ago", "weight": 1.5},
+        "P3": {"window": "271–360 days ago", "weight": 0.5}
+      },
+      "sql_rules": {
+        "eligibility": "Only restaurants with >= 10 distinct delivered customers in the last 360 days are included.",
+        "order_window": "Orders from CURRENT_DATE - 360 to CURRENT_DATE - 90 only (excludes last 90 days — those are covered by rre_rest_affinity)."
+      }
+    },
+
+    "noonbifood.product.rre_disc_affinity": {
+      "description": "Identifies discount-sensitive customers — those who heavily rely on promo codes. Used as an input signal for the Customer Discount Factor online booster (applied after pipeline output, not inside the DAG). Produced by rre_disc_affinity task.",
+      "grain": "One row per customer_id. Only customers with discount_ratio >= 0.6 AND discounted_orders >= 5 are stored.",
+      "partition": "NONE — no day filter. country = ae only.",
+      "key_columns": {
+        "customer_id": "Customer identifier [STRING]",
+        "total_orders": "Total non-failed orders placed by the customer in AE [INTEGER]",
+        "discounted_orders": "Count of orders where a discount code was applied (joined via mpnoon_food_order_discount) [INTEGER]",
+        "discount_ratio": "ROUND(discounted_orders / total_orders, 2) — proportion of orders with a discount. Only customers with >= 0.6 are stored. [FLOAT]"
+      },
+      "sql_rules": {
+        "filter": "discount_ratio >= 0.6 AND discounted_orders >= 5 (HAVING clause). These are discount-dependent customers.",
+        "country": "country = 'ae' and order_status <> 'failed'"
+      }
+    },
+
+    "noonbifood.product.rre_rating_penalty": {
+      "description": "Identifies low-rated restaurants to be penalised in the similarity score. Applied as a multiplier in similar_restaurant_clustering. Produced by rre_rating_penalty task (parallel, not in main chain).",
+      "grain": "One row per restaurant_code. Only restaurants with weighted_avg_rating < 3.5 AND total_ratings >= 5 are stored.",
+      "partition": "NONE",
+      "key_columns": {
+        "restaurant_code": "Restaurant identifier [STRING]",
+        "weighted_avg_rating": "SUM(food_rating × rating_count) / SUM(rating_count) — weighted average food rating across all outlets, last 180 days, non-failed AE orders only [FLOAT]",
+        "total_ratings": "Total number of ratings received across all outlets in the last 180 days [INTEGER]",
+        "low_rating_penalty": "Always 0.7. Multiplied into similarity_score in similar_restaurant_clustering: final_similarity = similarity_score × IFNULL(low_rating_penalty, 1). [FLOAT]"
+      },
+      "sql_rules": {
+        "trigger": "weighted_avg_rating < 3.5 AND total_ratings >= 5",
+        "window": "Last 180 days, country = ae, order_status <> failed",
+        "rating_source": "noondwh.food_food_order.mpnoon_food_order_rating joined via order_nr"
+      }
+    },
+
+    "noonbifood.product.rre_rest_affinity": {
+      "description": "Multi-signal customer × restaurant affinity table built from both order history and browsing behaviour (funnel events). The richest affinity signal in the pipeline. Produced by rre_cx_rx_affinity task. Consumed by rre_cx_preferred_rx.",
+      "grain": "One row per customer_id × MealTime × restaurant_code × affinity_type",
+      "partition": "NONE",
+      "key_columns": {
+        "customer_id": "Customer identifier [STRING]",
+        "MealTime": "Mealtime slot [STRING]",
+        "restaurant_code": "Restaurant code [STRING]",
+        "restaurant_name": "Restaurant name [STRING]",
+        "city": "City (lowercased) [STRING]",
+        "Value": "Period-decayed weighted score for this affinity signal. Formula: ROUND(SUM(CASE WHEN period='P1' THEN 2.5 WHEN period='P2' THEN 1.5 WHEN period='P3' THEN 0.5 WHEN period='P4' THEN 0.5 WHEN period='P5' THEN 0.2 END), 0) grouped by customer_id, MealTime, restaurant_code, affinity_type [FLOAT]",
+        "TATC_or_Torders": "Total sessions (for funnel-based types) or total orders (for CAO) by customer across all restaurants [INTEGER]",
+        "TATC_MealTime_or_Torders_Mealtime": "Total sessions or orders for this mealtime [INTEGER]",
+        "RNK": "Rank of restaurant for this customer × mealtime × affinity_type ordered by Value DESC. Capped at top 20. [INTEGER]",
+        "Percentage": "ROUND(Value / NULLIF(SUM(Value) OVER (PARTITION BY customer_id, MealTime), 0), 3) [FLOAT]",
+        "affinity_type": "Signal source. Values: CAO (orders), CAC (checkout), CAATC (add-to-cart), CAOV (outlet visit), CAS (search) [STRING]"
+      },
+      "affinity_types": {
+        "CAO": {"signal": "Customer Affinity by Orders", "source": "Delivered orders from daily_orders", "window": "Last 365 days"},
+        "CAC": {"signal": "Customer Affinity by Checkout", "source": "page_checkout funnel event from raw_events_v2", "window": "Last 365 days"},
+        "CAATC": {"signal": "Customer Affinity by Add-to-Cart", "source": "add_to_cart funnel event", "window": "Last 365 days"},
+        "CAOV": {"signal": "Customer Affinity by Outlet Visit", "source": "page_outlet funnel event", "window": "Last 365 days"},
+        "CAS": {"signal": "Customer Affinity by Search", "source": "search_dishes_item_click or search_restaurants_tile_click funnel events", "window": "Last 365 days"}
+      },
+      "period_decay": {
+        "P1": {"window": "Last 15 days", "weight": 2.5},
+        "P2": {"window": "15–45 days ago", "weight": 1.5},
+        "P3": {"window": "45–90 days ago", "weight": 0.5},
+        "P4": {"window": "90–180 days ago", "weight": 0.5},
+        "P5": {"window": "180–365 days ago", "weight": 0.2}
+      },
+      "sql_rules": {
+        "eligibility": "Only restaurants with >= 10 distinct delivered customers in the last 365 days are included.",
+        "funnel_source": "raw_events_v2 joined to session_segments_nat (is_moved <> 1, is_bounce <> 1, country = ae). Funnel events: page_outlet, add_to_cart, page_checkout, search_dishes_item_click, search_restaurants_tile_click.",
+        "session_uid": "Customer identity resolved via MAX(uid) OVER (PARTITION BY session_id) from raw_events_v2."
+      }
+    },
+
+    "noonbifood.product.rre_cx_preferred_rx": {
+      "description": "Final ranked list of preferred restaurants per customer × mealtime × city. Combines all affinity signals (CAO, CAC, CAATC, CAOV, CAS) from rre_rest_affinity into a single weighted score, then supplements with top-3 CAO90 restaurants for lower-ranked slots. Direct input into rre_production.",
+      "grain": "One row per customer_id × mealtime × city × restaurant_code (top 15: 12 base + 3 CAO90)",
+      "partition": "NONE",
+      "key_columns": {
+        "customer_id": "Customer identifier [STRING]",
+        "mealtime": "Mealtime slot [STRING]",
+        "city": "Customer's city [STRING]",
+        "restaurant_code": "Preferred restaurant code [STRING]",
+        "restaurant_name": "Preferred restaurant name [STRING]",
+        "final_weighted_score": "Combined weighted score across all affinity signals. Formula: SUM(1.0 × value_orders + 0.5 × value_cas + 0.2 × value_cac + 0.1 × value_atc + 0.01 × value_ovisit) multiplied by mealtime cross-score before final grouping. [FLOAT]",
+        "source": "base = ranks 1–12 from affinity signals. cao90 = ranks 13–15 from rre_cao90 historical fallback (only restaurants not already in top-12). [STRING]",
+        "rank": "Final rank for this customer × mealtime × city ordered by final_weighted_score DESC [INTEGER]"
+      },
+      "score_formula": {
+        "formula": "final_weighted_score = SUM(1.0 × value_orders + 0.5 × value_cas + 0.2 × value_cac + 0.1 × value_atc + 0.01 × value_ovisit)",
+        "signal_weights": {
+          "value_orders": {"weight": 1.0, "affinity_type": "CAO", "note": "strongest signal"},
+          "value_cas": {"weight": 0.5, "affinity_type": "CAS"},
+          "value_cac": {"weight": 0.2, "affinity_type": "CAC"},
+          "value_atc": {"weight": 0.1, "affinity_type": "CAATC"},
+          "value_ovisit": {"weight": 0.01, "affinity_type": "CAOV", "note": "weakest signal"}
+        },
+        "mealtime_cross_score_matrix": {
+          "note": "Affinity from one mealtime is partially applied to adjacent mealtimes before final grouping.",
+          "breakfast":   {"breakfast": 1.0, "lunch": 0.3, "snacks": 0.1, "dinner": 0.0, "post_dinner": 0.0},
+          "lunch":       {"breakfast": 0.2, "lunch": 1.0, "snacks": 0.3, "dinner": 0.4, "post_dinner": 0.0},
+          "snacks":      {"breakfast": 0.1, "lunch": 0.2, "snacks": 1.0, "dinner": 0.3, "post_dinner": 0.0},
+          "dinner":      {"breakfast": 0.0, "lunch": 0.2, "snacks": 0.1, "dinner": 1.0, "post_dinner": 0.3},
+          "post_dinner": {"breakfast": 0.0, "lunch": 0.0, "snacks": 0.2, "dinner": 0.3, "post_dinner": 1.0}
+        }
+      }
+    },
+
+    "noonbifood.product.rx_popularity_score": {
+      "description": "Restaurant-level popularity score per mealtime. Parallel task — not depended on by any other task in the main chain. Used as a cold-start or supplementary signal for customers with no affinity history.",
+      "grain": "One row per restaurant_code × mealtime",
+      "partition": "NONE",
+      "key_columns": {
+        "restaurant_code": "Restaurant identifier [STRING]",
+        "restaurant_name": "Restaurant name [STRING]",
+        "mealtime": "Mealtime slot [STRING]",
+        "order_volume": "Total orders for this restaurant × mealtime. Window: CURRENT_DATE - 180 to CURRENT_DATE - 30 (excludes last 30 days). [INTEGER]",
+        "avg_rating": "ROUND(AVG(rating_score), 2) from mpnoon_outlet_misc [FLOAT]",
+        "base_popularity_score": "Min-max normalisation of order_volume. Formula: ROUND((order_volume - MIN(order_volume) OVER ()) / (MAX(order_volume) OVER () - MIN(order_volume) OVER ()), 3) [FLOAT]",
+        "final_popularity_score": "ROUND(base_popularity_score × 1.5, 4) if avg_rating > 4.0, else base_popularity_score [FLOAT]",
+        "weighted_popularity_score": "ROUND(final_popularity_score × 0.3, 3) if restaurant_code is on the deboost list, else ROUND(final_popularity_score × 1.0, 3) [FLOAT]"
+      }
+    }
+  },
+
+  "metrics": {
+    "similarity_score": {
+      "definition": "How similar two restaurants are, based on shared customer base (collaborative filtering).",
+      "formula": "base = ROUND(common_customers / (SQRT(total_customers_rx1) × SQRT(total_customers_rx2)), 4). Then: × 0.3 if on deboost list. Then: × IFNULL(low_rating_penalty, 1) from rre_rating_penalty.",
+      "table": "noonbifood.product.similar_restaurant_clustering"
+    },
+    "affinity_value": {
+      "definition": "Period-decayed weighted count of interactions (orders or funnel events) a customer has had with a restaurant in a given mealtime.",
+      "formula_cao90": "ROUND(SUM(CASE WHEN period='P1' THEN 2.5 WHEN period='P2' THEN 1.5 WHEN period='P3' THEN 0.5 END), 0)",
+      "formula_rest_affinity": "ROUND(SUM(CASE WHEN period='P1' THEN 2.5 WHEN period='P2' THEN 1.5 WHEN period='P3' THEN 0.5 WHEN period='P4' THEN 0.5 WHEN period='P5' THEN 0.2 END), 0)",
+      "tables": ["noonbifood.product.rre_cao90", "noonbifood.product.rre_rest_affinity"]
+    },
+    "final_weighted_score": {
+      "definition": "Combined affinity score across all signal types for a customer × restaurant × mealtime. Used to rank preferred restaurants.",
+      "formula": "SUM(1.0 × value_orders + 0.5 × value_cas + 0.2 × value_cac + 0.1 × value_atc + 0.01 × value_ovisit) × mealtime_cross_score",
+      "table": "noonbifood.product.rre_cx_preferred_rx"
+    },
+    "total_score": {
+      "definition": "Final ranking score in the production output table.",
+      "formula_similar_rx": "LOG(1 + preferred_rx_score) × similarity_score",
+      "formula_preferred_rx": "avg_top10_similar_score × (0.8 + RAND() × 0.2) × mealtime_match_factor. mealtime_match_factor = 0.3 if restaurant does not serve that mealtime, else 1.0.",
+      "table": "noonbifood.product.rre_recommendation_prod"
+    },
+    "discount_ratio": {
+      "definition": "Proportion of a customer's orders that used a discount code. Used to identify discount-sensitive customers.",
+      "formula": "ROUND(discounted_orders / total_orders, 2)",
+      "table": "noonbifood.product.rre_disc_affinity",
+      "filter": "Only customers with discount_ratio >= 0.6 AND discounted_orders >= 5 are stored."
+    },
+    "weighted_avg_rating": {
+      "definition": "Weighted average food rating for a restaurant across all its outlets.",
+      "formula": "SUM(food_rating × rating_count) / SUM(rating_count)",
+      "table": "noonbifood.product.rre_rating_penalty",
+      "window": "Last 180 days, non-failed orders, country = ae"
+    },
+    "base_popularity_score": {
+      "definition": "Min-max normalised order volume for a restaurant × mealtime.",
+      "formula": "ROUND((order_volume - MIN(order_volume) OVER ()) / (MAX(order_volume) OVER () - MIN(order_volume) OVER ()), 3)",
+      "table": "noonbifood.product.rx_popularity_score"
+    },
+    "aov_cr_factor": {
+      "definition": "Normalised boost multiplier based on a restaurant's AOV × Conversion Rate relative to the platform distribution.",
+      "formula": "LEAST(1.3, GREATEST(1.0, 1 + 0.3 × SAFE_DIVIDE(aov_cr - p10, p95 - p10))). p10 = 10th percentile, p95 = 95th percentile of aov_cr across all restaurants.",
+      "table": "noonbifood.product.rre_aov_cr_factor",
+      "note": "This table is computed in a parallel DAG task but is NOT part of the main DAG chain. It is joined into similar_restaurant_clustering as a multiplier."
+    }
+  },
+
+  "sql_rules": {
+    "schema": "All RRE tables are in noonbifood.product schema.",
+    "country": "All tables are scoped to country = ae.",
+    "partition_rules": {
+      "rre_recommendation_prod": "No partition. Filter by customer_id, mealtime, city, or result_type.",
+      "rre_merged_recommendation_prod": "No partition.",
+      "rre_mealtime_flags": "No partition. One row per restaurant_code.",
+      "similar_restaurant_clustering": "No partition. Filter by base_restaurant_code and city.",
+      "rre_cao90": "No partition. Filter by customer_id and MealTime.",
+      "rre_disc_affinity": "No partition. Filter by customer_id.",
+      "rre_rating_penalty": "No partition. Filter by restaurant_code.",
+      "rre_rest_affinity": "No partition. Filter by customer_id, MealTime, affinity_type.",
+      "rre_cx_preferred_rx": "No partition. Filter by customer_id, mealtime, city.",
+      "rx_popularity_score": "No partition. Filter by mealtime."
+    },
+    "mealtime_derivation": "Mealtime is derived by joining daily_orders.hour or raw_events_v2 session hour to mpnoon_time_slot via hour range matching. Handles overnight wraparound (start_hour > end_hour).",
+    "notable_exclusion": "rre_aov_cr_factor is computed but NOT a dependency in the main DAG chain. rre_disc_affinity feeds the online booster only, not any BigQuery DAG step. rx_popularity_score is a parallel task with no downstream DAG dependency."
+  }
+}

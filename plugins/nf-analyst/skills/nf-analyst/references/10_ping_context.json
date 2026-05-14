@@ -1,0 +1,264 @@
+{
+  "table": {
+    "project": "noonbifood",
+    "dataset": "ping",
+    "name": "send_orders",
+    "full_ref": "noonbifood.ping.send_orders",
+    "description": "Order-level master table for Ping (quick commerce delivery) orders. One row per order_nr. Contains order metadata, delivery timestamps, logistics distances, customer segmentation flags, and payment details.",
+    "partition": {
+      "column": "day",
+      "type": "DATE"
+    },
+    "cluster": ["city", "order_status", "customer_code"],
+    "refresh": {
+      "schedule": "0 */4 * * * (every 4 hours: 00:00, 04:00, 08:00, 12:00, 16:00, 20:00 UTC)",
+      "strategy": "CREATE OR REPLACE — full lifetime rebuild every 4 hours"
+    }
+  },
+
+  "columns": [
+    {
+      "name": "order_nr",
+      "type": "STRING",
+      "description": "Unique order identifier. Primary grain of the table.",
+      "source": "noondwh.fdping_ping.ping_order"
+    },
+    {
+      "name": "customer_code",
+      "type": "STRING",
+      "description": "Unique customer identifier (UUID).",
+      "source": "noondwh.fdping_ping.ping_order"
+    },
+    {
+      "name": "day",
+      "type": "DATE",
+      "description": "Order creation date in GST (UTC+4). Partition column.",
+      "source": "DATE(TIMESTAMP_ADD(created_at, INTERVAL 4 HOUR))"
+    },
+    {
+      "name": "hour",
+      "type": "INT64",
+      "description": "Hour of order creation in GST (0–23).",
+      "source": "EXTRACT(HOUR FROM TIMESTAMP_ADD(created_at, INTERVAL 4 HOUR))"
+    },
+    {
+      "name": "mealtime",
+      "type": "STRING",
+      "description": "Mealtime bucket derived from order hour in GST.",
+      "values": {
+        "Breakfast": "hour 7–10",
+        "Lunch": "hour 11–14",
+        "Snacks": "hour 15–18",
+        "Dinner": "hour 19–22",
+        "Midnight": "hour 23–6"
+      },
+      "source": "derived from hour"
+    },
+    {
+      "name": "is_testing",
+      "type": "INT64",
+      "description": "0 = real order, 1 = test order. Table only contains 0 (test orders filtered at source).",
+      "source": "noondwh.fdping_ping.ping_order"
+    },
+    {
+      "name": "order_status",
+      "type": "STRING",
+      "description": "Lowercased order status.",
+      "known_values": ["delivered", "cancelled", "failed", "created"],
+      "source": "LOWER(noondwh.fdping_ping.ping_order.order_status)"
+    },
+    {
+      "name": "payment_method",
+      "type": "STRING",
+      "description": "Cleaned payment method label.",
+      "values": {
+        "COD": "Cash on delivery",
+        "Apple_Pay": "Apple Pay",
+        "Credit_Card": "Credit card via NoonPay (cc_noonpay)",
+        "other": "Any other raw payment_method value"
+      },
+      "source": "noondwh.fdping_ping.ping_order.payment_method"
+    },
+    {
+      "name": "order_payment_amount",
+      "type": "FLOAT64",
+      "description": "Order value / fee paid by customer. Use only for delivered orders for GMV/AOV calculations.",
+      "source": "noondwh.fdping_ping.ping_order"
+    },
+    {
+      "name": "package_type",
+      "type": "STRING",
+      "description": "Type/size of the package for the order.",
+      "source": "noondwh.fdping_ping.ping_order"
+    },
+    {
+      "name": "city",
+      "type": "STRING",
+      "description": "City where the order was fulfilled, derived from fleet assignment.",
+      "known_values": ["Dubai", "Abu Dhabi", "Sharjah"],
+      "source": "noondwh.scfood_foodlogistics.city via task → fleet → city join"
+    },
+    {
+      "name": "created_at_gst",
+      "type": "TIMESTAMP",
+      "description": "Order creation timestamp in GST (UTC+4).",
+      "source": "TIMESTAMP_ADD(ping_order.created_at, INTERVAL 4 HOUR)"
+    },
+    {
+      "name": "assigned_at_gst",
+      "type": "TIMESTAMP",
+      "description": "Rider assignment timestamp in GST. NULL if never assigned.",
+      "source": "TIMESTAMP_ADD(ping_order.assigned_at, INTERVAL 4 HOUR)"
+    },
+    {
+      "name": "picked_up_at_gst",
+      "type": "TIMESTAMP",
+      "description": "Order pickup timestamp in GST. NULL if never picked up.",
+      "source": "TIMESTAMP_ADD(ping_order.picked_up_at, INTERVAL 4 HOUR)"
+    },
+    {
+      "name": "delivered_at_gst",
+      "type": "TIMESTAMP",
+      "description": "Order delivery timestamp in GST. NULL if not delivered.",
+      "source": "TIMESTAMP_ADD(ping_order.delivered_at, INTERVAL 4 HOUR)"
+    },
+    {
+      "name": "time_to_assignment_min",
+      "type": "INT64",
+      "description": "Minutes from order creation to rider assignment. NULL for non-delivered orders.",
+      "formula": "TIMESTAMP_DIFF(assigned_at_gst, created_at_gst, MINUTE)"
+    },
+    {
+      "name": "time_to_pickup_min",
+      "type": "INT64",
+      "description": "Minutes from rider assignment to order pickup. NULL for non-delivered orders.",
+      "formula": "TIMESTAMP_DIFF(picked_up_at_gst, assigned_at_gst, MINUTE)"
+    },
+    {
+      "name": "time_to_delivery_min",
+      "type": "INT64",
+      "description": "Minutes from pickup to delivery (last mile time). NULL for non-delivered orders.",
+      "formula": "TIMESTAMP_DIFF(delivered_at_gst, picked_up_at_gst, MINUTE)"
+    },
+    {
+      "name": "o2d_minutes",
+      "type": "INT64",
+      "description": "Order-to-door: total minutes from order creation to delivery. Key SLA metric. NULL for non-delivered orders.",
+      "formula": "TIMESTAMP_DIFF(delivered_at_gst, created_at_gst, MINUTE)"
+    },
+    {
+      "name": "lm_km",
+      "type": "FLOAT64",
+      "description": "Last mile distance in km — rider to customer. NULL if no logistics record exists.",
+      "source": "noondwh.scfood_foodlogistics.task_misc.distance / 1000"
+    },
+    {
+      "name": "fm_km",
+      "type": "FLOAT64",
+      "description": "First mile distance in km — store/dark store to rider pickup point. NULL if no logistics record exists.",
+      "source": "noondwh.scfood_foodlogistics.task_offer.distance / 1000"
+    },
+    {
+      "name": "first_order_date",
+      "type": "DATE",
+      "description": "Date of the customer's first ever Ping order (lifetime, across all history).",
+      "source": "MIN(day) per customer_code from ping_order"
+    },
+    {
+      "name": "is_new_customer",
+      "type": "BOOL",
+      "description": "TRUE if this order is the customer's first ever Ping order (day = first_order_date).",
+      "formula": "day = first_order_date"
+    },
+    {
+      "name": "is_repeat_customer",
+      "type": "BOOL",
+      "description": "TRUE if the customer has placed a Ping order before this one (day > first_order_date).",
+      "formula": "day > first_order_date"
+    },
+    {
+      "name": "is_n1_customer",
+      "type": "BOOL",
+      "description": "TRUE if the customer was flagged as N1 (top-tier Noon customer) on that specific order day. Sourced from CRM daily flags, AE country only, matched on both customer_code and day.",
+      "source": "noonbicrm.crm_master.daily_customer_flags_one"
+    },
+    {
+      "name": "nationality",
+      "type": "STRING",
+      "description": "Customer nationality bucketed into top nationalities. Any nationality outside the top list is grouped as 'Others'.",
+      "known_values": [
+        "India", "United Arab Emirates", "Philippines", "Pakistan", "Egypt",
+        "Syria", "Jordan", "Sri Lanka", "Lebanon", "Sudan", "Palestine",
+        "United Kingdom", "Morocco", "Saudi Arabia", "Nepal", "Iran", "Russia",
+        "South Africa", "Algeria", "Turkey", "Canada", "Tunisia", "Others"
+      ],
+      "source": "noonbifood.cache_food.final_final_ncc.country_name"
+    },
+    {
+      "name": "delivery_notes",
+      "type": "STRING",
+      "description": "Customer-provided delivery instructions / notes extracted from delivery_instructions JSON.",
+      "source": "JSON_VALUE(ping_order.delivery_instructions, '$.delivery_notes')"
+    },
+    {
+      "name": "should_save",
+      "type": "STRING",
+      "description": "Flag from delivery_instructions JSON indicating whether the address should be saved.",
+      "source": "JSON_VALUE(ping_order.delivery_instructions, '$.should_save')"
+    }
+  ],
+
+  "common_filters": {
+    "exclude_test_orders": "is_testing = 0 (already filtered at table level — no additional filter needed)",
+    "delivered_only": "WHERE order_status = 'delivered'",
+    "date_range": "WHERE day BETWEEN DATE('YYYY-MM-DD') AND DATE('YYYY-MM-DD')",
+    "city_filter": "WHERE city = 'Dubai'",
+    "new_customers": "WHERE is_new_customer = TRUE",
+    "repeat_customers": "WHERE is_repeat_customer = TRUE",
+    "n1_customers": "WHERE is_n1_customer = TRUE"
+  },
+
+  "common_metrics": {
+    "total_orders": "COUNT(DISTINCT order_nr)",
+    "delivered_orders": "COUNT(DISTINCT CASE WHEN order_status = 'delivered' THEN order_nr END)",
+    "cancelled_orders": "COUNT(DISTINCT CASE WHEN order_status = 'cancelled' THEN order_nr END)",
+    "failed_orders": "COUNT(DISTINCT CASE WHEN order_status = 'failed' THEN order_nr END)",
+    "delivery_rate_pct": "ROUND(SAFE_DIVIDE(COUNT(DISTINCT CASE WHEN order_status = 'delivered' THEN order_nr END), COUNT(DISTINCT order_nr)) * 100, 1)",
+    "gmv": "SUM(CASE WHEN order_status = 'delivered' THEN order_payment_amount ELSE 0 END)",
+    "aov": "SAFE_DIVIDE(SUM(CASE WHEN order_status = 'delivered' THEN order_payment_amount ELSE 0 END), COUNT(DISTINCT CASE WHEN order_status = 'delivered' THEN order_nr END))",
+    "avg_o2d_min": "AVG(CASE WHEN order_status = 'delivered' THEN o2d_minutes END)",
+    "avg_assignment_min": "AVG(CASE WHEN order_status = 'delivered' THEN time_to_assignment_min END)",
+    "avg_pickup_min": "AVG(CASE WHEN order_status = 'delivered' THEN time_to_pickup_min END)",
+    "avg_last_mile_min": "AVG(CASE WHEN order_status = 'delivered' THEN time_to_delivery_min END)",
+    "total_lm_km": "SUM(CASE WHEN order_status = 'delivered' THEN lm_km ELSE 0 END)",
+    "avg_lm_km": "AVG(CASE WHEN order_status = 'delivered' THEN lm_km END)",
+    "new_customers": "COUNT(DISTINCT CASE WHEN is_new_customer THEN customer_code END)",
+    "repeat_customers": "COUNT(DISTINCT CASE WHEN is_repeat_customer THEN customer_code END)",
+    "n1_customers": "COUNT(DISTINCT CASE WHEN is_n1_customer THEN customer_code END)",
+    "non_n1_customers": "COUNT(DISTINCT CASE WHEN NOT is_n1_customer THEN customer_code END)"
+  },
+
+  "example_queries": {
+    "daily_order_summary": "SELECT day, COUNT(DISTINCT order_nr) AS total_orders, COUNT(DISTINCT CASE WHEN order_status = 'delivered' THEN order_nr END) AS delivered_orders FROM `noonbifood.ping.send_orders` GROUP BY 1 ORDER BY 1",
+    "daily_aov_gmv": "SELECT day, ROUND(SUM(CASE WHEN order_status = 'delivered' THEN order_payment_amount END), 2) AS gmv, ROUND(SAFE_DIVIDE(SUM(CASE WHEN order_status = 'delivered' THEN order_payment_amount END), COUNT(DISTINCT CASE WHEN order_status = 'delivered' THEN order_nr END)), 2) AS aov FROM `noonbifood.ping.send_orders` GROUP BY 1 ORDER BY 1",
+    "daily_o2d": "SELECT day, ROUND(AVG(CASE WHEN order_status = 'delivered' THEN o2d_minutes END), 1) AS avg_o2d FROM `noonbifood.ping.send_orders` GROUP BY 1 ORDER BY 1",
+    "n1_vs_non_n1": "SELECT day, COUNT(DISTINCT CASE WHEN is_n1_customer THEN customer_code END) AS n1_customers, COUNT(DISTINCT CASE WHEN NOT is_n1_customer THEN customer_code END) AS non_n1_customers FROM `noonbifood.ping.send_orders` WHERE order_status = 'delivered' GROUP BY 1 ORDER BY 1",
+    "new_vs_repeat": "SELECT day, COUNT(DISTINCT CASE WHEN is_new_customer THEN customer_code END) AS new_customers, COUNT(DISTINCT CASE WHEN is_repeat_customer THEN customer_code END) AS repeat_customers FROM `noonbifood.ping.send_orders` GROUP BY 1 ORDER BY 1",
+    "payment_mix": "SELECT day, payment_method, COUNT(DISTINCT order_nr) AS orders FROM `noonbifood.ping.send_orders` GROUP BY 1, 2 ORDER BY 1, 2",
+    "city_day_summary": "SELECT day, city, COUNT(DISTINCT order_nr) AS total_orders FROM `noonbifood.ping.send_orders` GROUP BY 1, 2 ORDER BY 1, 2",
+    "mealtime_split": "SELECT day, mealtime, COUNT(DISTINCT order_nr) AS orders FROM `noonbifood.ping.send_orders` GROUP BY 1, 2 ORDER BY 1, 2",
+    "nationality_split": "SELECT day, nationality, COUNT(DISTINCT order_nr) AS orders FROM `noonbifood.ping.send_orders` GROUP BY 1, 2 ORDER BY 1, 2"
+  },
+
+  "notes": [
+    "All timestamps are stored in GST (UTC+4). Raw UTC timestamps are NOT stored — use created_at_gst, assigned_at_gst etc.",
+    "Delivery time columns (o2d_minutes, time_to_assignment_min etc.) are NULL for non-delivered orders. Always filter or use CASE WHEN order_status = 'delivered' when aggregating.",
+    "lm_km and fm_km are NULL if no logistics record exists for the order — use CASE WHEN or filter accordingly.",
+    "is_testing = 0 is already enforced at the table level. No additional filter needed.",
+    "is_new_customer and is_repeat_customer are mutually exclusive and derived from lifetime first_order_date — not just the 65-day window.",
+    "is_n1_customer is a daily flag — it reflects N1 status on the specific order day, not current status.",
+    "nationality is pre-bucketed. 'Others' covers all nationalities outside the top 22 listed.",
+    "city can be NULL if the order has no associated task/fleet record in the logistics tables.",
+    "Table is partitioned by day — always include a day filter in production queries to minimize bytes scanned."
+  ]
+}

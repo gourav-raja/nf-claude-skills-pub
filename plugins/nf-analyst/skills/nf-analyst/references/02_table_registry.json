@@ -1,0 +1,291 @@
+{
+  "tables": [
+    {
+      "t": "noonbifood.reporting.daily_orders",
+      "short": "daily_orders",
+      "grain": "1 row/order/day",
+      "pk": "order_id",
+      "part": "day",
+      "use": "Core order fact. GMV, customers, AOV, orders, cancels, promos, discounts, churn, ratings."
+    },
+    {
+      "t": "noonbifood.growthv1.nat_events_complete",
+      "short": "nat_events_complete",
+      "grain": "1 row/event/session",
+      "pk": "sid",
+      "part": "day",
+      "use": "Raw events. Funnel, sessions, engagement. Very large — always filter day.",
+      "key_events": {
+        "page_outlet": "menu view (top funnel)",
+        "add_to_cart": "purchase intent",
+        "page_checkout": "checkout open",
+        "transaction": "order placed (bottom funnel)"
+      }
+    },
+    {
+      "t": "noonbifood.growthv1.session_segments_nat",
+      "short": "session_segments_nat",
+      "grain": "1 row/session",
+      "pk": "sid",
+      "part": "day",
+      "use": "Session flags: bounce, move, new user, CRM, N2F, first food. Use instead of computing from raw events."
+    },
+    {
+      "t": "noonbifood.sales.outlet_status_complete",
+      "short": "outlet_status_complete",
+      "grain": "snapshot/outlet",
+      "pk": "restaurant_code",
+      "part": null,
+      "use": "Current outlet statuses. Live outlet counts, visibility. No date filter."
+    },
+    {
+      "t": "noondwh.food_finance.food_order",
+      "short": "food_order_finance",
+      "grain": "1 row/order",
+      "pk": "order_nr",
+      "part": "created_at",
+      "use": "Finance only: commission, settlement, payout. NOT for business GMV/customers."
+    },
+    {
+      "t": "noondwh.scfood_foodlogistics.task_timestamp",
+      "short": "task_timestamp",
+      "grain": "1 row/task",
+      "pk": "id_task",
+      "part": "created_at",
+      "use": "Precise logistics timestamps: offer, assignment, pickup, handover, delivery."
+    },
+    {
+      "t": "noondwh.scfood_foodlogistics.task",
+      "short": "task",
+      "grain": "1 row/task",
+      "pk": "id_task",
+      "part": "created_at",
+      "use": "Master logistics: order→delivery mapping, fleet, rider, COD, status."
+    },
+    {
+      "t": "noondwh.scfood_foodlogistics.task_misc",
+      "short": "task_misc",
+      "grain": "1 row/task",
+      "pk": "id_task",
+      "part": "created_at",
+      "use": "Logistics enrichment: tip, ETA, distance, batching, relay, HVO. Join via task to reach daily_orders."
+    },
+    {
+      "t": "noondwh.food_food_order.mpnoon_food_order_extra",
+      "short": "food_order_extra",
+      "grain": "1 row/order",
+      "pk": "order_nr",
+      "part": "created_at",
+      "use": "600GB+ metadata snapshot. Only when standard tables lack: discount details, SLA meta, customer state, invoice."
+    },
+    {
+      "t": "noondwh.food_food_order.mpnoon_food_order",
+      "short": "mpnoon_food_order",
+      "grain": "1 row/order",
+      "pk": "id_food_order",
+      "part": "created_at",
+      "use": "Raw order master: payment, delivery, fees, discounts, wallet, VIP, fleet. When daily_orders is insufficient."
+    },
+    {
+      "t": "noonbifood.reporting.temp_outlet_status",
+      "short": "temp_outlet_status",
+      "grain": "snapshot/outlet",
+      "pk": "outlet_code",
+      "part": null,
+      "use": "Outlet master: city, hub, area, cuisine, prep time. Enrichment only. No date filter."
+    },
+    {
+      "t": "noonbifood.growthv1.daily_rca_nat_reattributed",
+      "short": "daily_rca",
+      "grain": "1 row/day/country",
+      "pk": "day+country",
+      "part": "day",
+      "use": "Pre-agg daily funnel by country+channel. Always add country filter."
+    },
+    {
+      "t": "noonbilogi.noonfoodomt.mp_order_base_mat",
+      "short": "mp_order_base_mat",
+      "grain": "1 row/order",
+      "pk": "order_nr",
+      "part": "ops_order_date",
+      "use": "Best for O2D, SLA breaches, delivery stage times. Times in SECONDS. Requires ops_order_date filter."
+    },
+    {
+      "t": "noonbifood.growthv1.session_zone",
+      "short": "session_zone",
+      "grain": "1 row/session",
+      "pk": "sessionid",
+      "part": "day",
+      "use": "Geo session distribution (city/hub/area). Cheaper than nat_events_complete for location queries."
+    },
+    {
+      "t": "noonbifood.sales.mpnoon_order_discount",
+      "short": "order_discount",
+      "grain": "1 row/order/discount",
+      "pk": "order_nr",
+      "part": "created_at",
+      "use": "Order-level discounts and promo codes. Multi-row per order."
+    },
+    {
+      "t": "noonbifood.reporting.outlet_dod_funnel",
+      "short": "outlet_dod_funnel",
+      "grain": "1 row/outlet/day",
+      "pk": "Outlet_Code",
+      "part": "Day",
+      "use": "Pre-agg outlet funnel: impressions, conversion, new/repeat. Country filter: Country='Ae'."
+    },
+    {
+      "t": "noonbifood.sales.food_order_item",
+      "short": "food_order_item",
+      "grain": "1 row/item/order",
+      "pk": "order_nr",
+      "part": "day",
+      "use": "Item sales. price is STRING — cast to NUMERIC. Use COUNT(DISTINCT order_nr) for orders."
+    },
+    {
+      "t": "noonbilogi.sharefood.rod_category_tagging",
+      "short": "rod_category_tagging",
+      "grain": "1 row/partner",
+      "pk": "id_partner_owner",
+      "part": null,
+      "use": "Partner/brand category lookup. Small — safe for LEFT JOIN."
+    },
+    {
+      "t": "noonbifood.reporting.food_order_review",
+      "short": "food_order_review",
+      "grain": "1 row/reviewed order",
+      "pk": "order_nr",
+      "part": null,
+      "use": "Customer reviews. Only reviewed orders — join daily_orders for denominator."
+    },
+    {
+      "t": "noonbifood.growthv1.item_mapping_cuisine",
+      "short": "item_mapping_cuisine",
+      "grain": "1 row/item_code",
+      "pk": "item_code",
+      "part": null,
+      "use": "Item→cuisine mapping. Join with food_order_item."
+    },
+    {
+      "t": "noonbifood.reporting.order_distance",
+      "short": "order_distance",
+      "grain": "1 row/order",
+      "pk": "order_id",
+      "part": null,
+      "use": "Delivery distance. Join daily_orders for context."
+    },
+    {
+      "t": "noonbifood.reporting.food_order_task_type",
+      "short": "food_order_task_type",
+      "grain": "1 row/task",
+      "pk": "id_task",
+      "part": null,
+      "use": "Task type: delivery vs pickup."
+    },
+    {
+      "t": "noonbifood.sales.item_finder",
+      "short": "item_finder",
+      "grain": "1 row/item/outlet/version",
+      "pk": "item_identifier",
+      "part": null,
+      "use": "Menu master: price, category, active status. Enrichment only."
+    },
+    {
+      "t": "noondwh.food_food_order.mpnoon_food_order_discount",
+      "short": "food_order_discount_detail",
+      "grain": "1 row/order/discount",
+      "pk": "id_food_order_discount",
+      "part": "created_at",
+      "use": "Detailed discount: coupon, cashback, VIP flag, funding split. Multi-row per order."
+    },
+    {
+      "t": "noondwh.food_food_order.mpnoon_discount",
+      "short": "mpnoon_discount",
+      "grain": "1 row/discount",
+      "pk": "id_discount",
+      "part": "created_at",
+      "use": "Discount config/eligibility rules, VIP-only flags, country availability."
+    },
+    {
+      "t": "noondwh.food_food.discount",
+      "short": "food_discount_by_restaurant",
+      "grain": "1 row/discount/restaurant",
+      "pk": "id_discount",
+      "part": "created_at",
+      "use": "Restaurant-specific discount configs and eligibility rules."
+    },
+    {
+      "t": "noonprd-mp-analytics.noon_analytics_tool.raw_events_v2",
+      "short": "raw_events_v2",
+      "grain": "1 row/event/user/session",
+      "pk": "session_id",
+      "part": "DAY",
+      "use": "Raw user event stream for funnel analysis. Always filter food context: JSON_VALUE(event_misc,'$.szf') IS NOT NULL OR JSON_VALUE(event_misc,'$.mpe')='food'. Locale filter: LOWER(locale) LIKE '%ae%'."
+    },
+    {
+      "t": "noonbifoodcrsandbox.product.test_abc_unbiased",
+      "short": "abc_segments",
+      "grain": "1 row/customer",
+      "pk": "customer_id",
+      "part": null,
+      "use": "A/B/C test segment assignments. Values: test_a, test_b, test_c, control. JOIN on uid=customer_id from raw_events_v2."
+    },
+    {
+      "t": "noonbifood.reporting.daily_orders_items",
+      "short": "daily_orders_items",
+      "grain": "1 row/item/order",
+      "pk": "order_nr",
+      "part": "order_date",
+      "use": "Reporting-layer item fact: revenue, qty, payment, hub. Preferred over food_order_item for reporting. NO country column — JOIN daily_orders ON order_nr=order_id to filter by country and order_status."
+    },
+    {
+      "t": "noonbifood.growthv1.daily_hubz_rca_nat",
+      "short": "daily_hubz_rca",
+      "grain": "1 row/hub/day",
+      "pk": "city",
+      "part": "day",
+      "use": "Pre-agg hub/city funnel (sessions, bounce, conversion). Much cheaper than nat_events_complete for geo funnel."
+    },
+    {
+      "t": "noonbifood.cache_food.final_final_ncc",
+      "short": "final_final_ncc",
+      "grain": "1 row/customer",
+      "pk": "customer_id",
+      "part": null,
+      "use": "Customer nationality mapping: customer_id → gender, Final_nationality, country_name. Use for nationality-level customer analysis, Ramadan/seasonal drops by nationality, YoY nationality trends. JOIN daily_orders ON customer_id=customer_id."
+    },
+    {
+      "t": "noonbifood.reporting.active_discount_outlets",
+      "short": "active_discount_outlets",
+      "grain": "one row per outlet_code + discount_code per snapshot_date",
+      "use": "Snapshot of active discount configurations per outlet. Use to find which outlets have live discounts, discount type (flat/percentage), funding source, campaign, and validity dates. Always filter by snapshot_date.",
+      "partition": "snapshot_date"
+    }
+
+  ],
+  "joins": [
+    "daily_orders↔nat_events_complete: customer_id=uid",
+    "daily_orders↔outlet_status_complete: restaurant_code=restaurant_code",
+    "daily_orders↔temp_outlet_status: restaurant_code=outlet_code",
+    "daily_orders↔mp_order_base_mat: order_id=order_nr",
+    "daily_orders↔food_order_finance: order_id=order_nr",
+    "daily_orders↔food_order_item: order_id=order_nr",
+    "daily_orders↔mpnoon_order_discount: order_id=order_nr",
+    "daily_orders↔food_order_discount_detail: order_id=order_nr",
+    "daily_orders↔food_order_review: order_id=order_nr",
+    "daily_orders↔order_distance: order_id=order_id",
+    "daily_orders↔daily_orders_items: order_id=order_nr",
+    "task→daily_orders: order_ref_nr=order_id",
+    "task_timestamp→task: id_task=id_task",
+    "task_misc→task: id_task=id_task (CANNOT join task_misc directly to daily_orders)",
+    "food_order_task_type→task: id_task=id_task",
+    "food_order_item→item_mapping_cuisine: item_code=item_code",
+    "session_segments_nat↔nat_events_complete: sid=sid",
+    "session_zone↔nat_events_complete: sessionid=sid",
+    "mpnoon_food_order→rod_category_tagging: id_partner=id_partner_owner",
+    "food_order_discount_detail→mpnoon_discount: discount_code=code",
+    "outlet_dod_funnel→outlet_status_complete: Outlet_Code=outlet_code",
+    "outlet_dod_funnel→mp_order_base_mat: Outlet_Code=outlet_code",
+    "daily_orders↔final_final_ncc: customer_id=customer_id"
+  ]
+}

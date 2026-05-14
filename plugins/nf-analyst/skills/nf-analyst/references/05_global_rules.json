@@ -1,0 +1,278 @@
+{
+  "rules": [
+    {
+      "id": "R01",
+      "rule": "Always filter partition column to avoid full scan",
+      "tables": ["daily_orders", "nat_events_complete", "session_segments_nat", "daily_hubz_rca_nat"],
+      "except": "outlet_status_complete, temp_outlet_status have no partition"
+    },
+    {
+      "id": "R02",
+      "rule": "Use order_status='delivered' for all customer/GMV metrics",
+      "except": "cancel rate needs IN ('delivered','canceled')"
+    },
+    {
+      "id": "R03",
+      "rule": "Country filter differs per table — never mix",
+      "map": {
+        "daily_orders": "country='ae'",
+        "nat_events_complete": "locale LIKE '%ae%'",
+        "session_segments_nat": "country='ae'",
+        "outlet_status_complete": "country='ae'",
+        "daily_hubz_rca_nat": "Country='ae'",
+        "mp_order_base_mat": "country_code='ae'",
+        "outlet_dod_funnel": "Country='Ae'",
+        "mpnoon_food_order": "country_code='ae'"
+      }
+    },
+    {
+      "id": "R04",
+      "rule": "Live outlet ALWAYS needs all 3 filters: status='active' AND is_consumer_visible='1' AND outlet_deleted=0",
+      "note": "is_consumer_visible is STRING '1' not int. Inject even if user doesn't mention."
+    },
+    {
+      "id": "R05",
+      "rule": "Default date = last 7 days if not specified",
+      "sql": "WHERE day BETWEEN DATE_SUB(CURRENT_DATE(),INTERVAL 7 DAY) AND DATE_SUB(CURRENT_DATE(),INTERVAL 1 DAY)"
+    },
+    {
+      "id": "R06",
+      "rule": "is_bounce/is_moved live in session_segments_nat NOT nat_events_complete"
+    },
+    {
+      "id": "R07",
+      "rule": "For hub/city daily funnel use daily_hubz_rca_nat first (pre-agg, cheap); use nat_events_complete only for user/session-level detail"
+    },
+    {
+      "id": "R08",
+      "rule": "New + Repeat = Active Customers — validate if computing all three"
+    },
+    {
+      "id": "R09",
+      "rule": "Discount cols bank_funded/noon_funded/rest_funded/Channel_discount are NEGATIVE — use -1*SUM() or ABS(). Outlet_discount is positive."
+    },
+    {
+      "id": "R10",
+      "rule": "Churn features always on delivered AE orders; country='ae' AND order_status='delivered' at base"
+    },
+    {
+      "id": "R11",
+      "rule": "outlet_status_complete and temp_outlet_status are snapshots — NO partition, always full scan. Never add day filter."
+    },
+    {
+      "id": "R12",
+      "rule": "Inter-order gap: use order_placed_at (timestamp) not day (date)"
+    },
+    {
+      "id": "R13",
+      "rule": "food_order_item.price is STRING — CAST to NUMERIC before arithmetic",
+      "good": "SUM(CAST(price AS NUMERIC)*qty)",
+      "bad": "SUM(price*qty)"
+    },
+    {
+      "id": "R14",
+      "rule": "food_order_item is item-grain — use COUNT(DISTINCT order_nr) for orders",
+      "bad": "COUNT(*) overcounts"
+    },
+    {
+      "id": "R15",
+      "rule": "mpnoon_order_discount & mpnoon_food_order_discount are multi-row per order — COUNT(DISTINCT order_nr)"
+    },
+    {
+      "id": "R16",
+      "rule": "Always SAFE_DIVIDE for rates/ratios — never plain division"
+    },
+    {
+      "id": "R17",
+      "rule": "Pre-agg tables (daily_hubz_rca_nat, daily_rca_nat_reattributed, outlet_dod_funnel): use SUM() on metric cols, never COUNT()"
+    },
+    {
+      "id": "R18",
+      "rule": "Always SUM metrics then divide — never compute rates row-by-row",
+      "good": "SAFE_DIVIDE(SUM(Rel_ATC),SUM(Rel_OA))",
+      "bad": "SAFE_DIVIDE(Rel_ATC,Rel_OA) per row"
+    },
+    {
+      "id": "R19",
+      "rule": "mp_order_base_mat requires ops_order_date filter — BigQuery enforces, query fails without it"
+    },
+    {
+      "id": "R20",
+      "rule": "mp_order_base_mat time cols (O2D,O2A,A2RFP,P2D,est_O2D) are in SECONDS — divide by 60 for minutes"
+    },
+    {
+      "id": "R21",
+      "rule": "daily_rca_nat_reattributed always needs country filter (grain=day+country); missing = doubled/mixed data"
+    },
+    {
+      "id": "R22",
+      "rule": "task_misc has no direct path to daily_orders — join via task",
+      "path": "task_misc→task(ON id_task)→daily_orders(ON task.order_ref_nr=daily_orders.order_id)"
+    },
+    {
+      "id": "R23",
+      "rule": "Cancel rate denominator = IN ('delivered','canceled') — never 'delivered' only (gives 0%)"
+    },
+    {
+      "id": "R24",
+      "rule": "Burn for RestoOwnDelivery=1 must include delivery_subsidy",
+      "good": "-1*SUM(IF(RestoOwnDelivery=1, noon_funded+delivery_subsidy, noon_funded))",
+      "bad": "-1*SUM(noon_funded)"
+    },
+    {
+      "id": "R25",
+      "rule": "'restaurants'→COUNT(DISTINCT restaurant_code); 'outlets/locations'→COUNT(DISTINCT Outlet_Code). Never use Outlet_Code to answer restaurant-count questions.",
+      "good": "COUNT(DISTINCT restaurant_code)",
+      "bad": "COUNT(DISTINCT Outlet_Code) for a restaurants question"
+    },
+    {
+      "id": "R26",
+      "rule": "When a brand name is mentioned (e.g. 'McDonald\\'s', 'KFC', 'Starbucks'), default to restaurant-level aggregation (GROUP BY restaurant_code or restaurant_name) — NOT outlet-level. Only use outlet_code/outlet_name if the user explicitly asks for individual outlet breakdown.",
+      "example": "'orders for McDonald\\'s' → GROUP BY restaurant_code/restaurant_name; NOT GROUP BY outlet_code"
+    },
+    {
+      "id": "R27",
+      "rule": "Widget type lives in event_misc.$.wt as slash-delimited path: SPLIT($.wt,'/')[0]=page (hp/d1/d2/dp/so/sd), SPLIT($.wt,'/')[1]=widget (ol=outlet list, banner, carousel, etc). Always SPLIT before filtering on page or widget.",
+      "good": "lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(0)]) LIKE 'hp'",
+      "bad": "JSON_EXTRACT_SCALAR(event_misc,'$.wt') LIKE '%hp%'"
+    },
+    {
+      "id": "R28",
+      "rule": "Food session filter in nat_events_complete (and raw_events_v2) requires OR condition — a session is food if $.szf is not null (food zone flag) OR $.mpe='food' (mini-page entry). Never use just one condition alone.",
+      "good": "AND (JSON_VALUE(event_misc,'$.szf') IS NOT NULL OR JSON_VALUE(event_misc,'$.mpe')='food')",
+      "bad": "JSON_VALUE(event_misc,'$.mpe')='food' -- misses szf-flagged sessions"
+    },
+    {
+      "id": "R29",
+      "rule": "Funnel metrics in nat_events_complete use COUNT(DISTINCT sid) per event_type via CASE WHEN for session-level counts. OC-level metrics use COUNT(DISTINCT JSON_EXTRACT_SCALAR(event_misc,'$.oc')). Always track BOTH — sid answers 'how many sessions', OC answers 'how many outlets touched'. Never conflate the two.",
+      "good": "COUNT(DISTINCT CASE WHEN event_type='outlet_impression_v2' THEN JSON_EXTRACT_SCALAR(event_misc,'$.oc') END) AS OC_Impression, COUNT(DISTINCT CASE WHEN event_type='outlet_impression_v2' THEN sid END) AS Session_Impression",
+      "bad": "COUNT(DISTINCT sid) for all metrics including outlet-level counts"
+    },
+    {
+      "id": "R30",
+      "rule": "Active restaurant filter on outlet_status_complete must always use all three conditions: bq_activation_status, outlet_deleted, and country. Never substitute with status='active' or is_consumer_visible alone.",
+      "good": "AND osc.bq_activation_status = 'Activated by Ops' AND osc.outlet_deleted = 0 AND LOWER(osc.country) = 'ae'",
+      "bad": "AND osc.status = 'active' AND osc.is_consumer_visible = '1'"
+    },
+    {
+      "id": "R31",
+      "rule": "daily_orders_items has NO country column and NO order_status column. NEVER filter by country or order_status directly on this table. Always JOIN to daily_orders to apply those filters.",
+      "good": "FROM noonbifood.reporting.daily_orders_items doi JOIN noonbifood.reporting.daily_orders do ON doi.order_nr=do.order_id WHERE doi.order_date=... AND do.country='ae' AND do.order_status='delivered'",
+      "bad": "FROM noonbifood.reporting.daily_orders_items WHERE country='ae' OR order_status='delivered'"
+    },
+    {
+      "id": "R32",
+      "rule": "'PID' always means id_partner_owner — NEVER restaurant_code. When a user says 'PID 491699', generate: WHERE id_partner_owner = 491699. One PID can span multiple restaurant_codes/brands.",
+      "good": "WHERE id_partner_owner = 491699",
+      "bad": "WHERE restaurant_code = '491699'"
+    },
+    {
+      "id": "R33",
+      "rule": "'RID' always means id_restaurant (numeric) — NEVER restaurant_code. daily_orders has no id_restaurant column; filtering by RID requires JOIN to outlet_status_complete on restaurant_code. One RID = one restaurant brand.",
+      "good": "JOIN noonbifood.reporting.outlet_status_complete osc ON do.restaurant_code = osc.restaurant_code WHERE osc.id_restaurant = <rid>",
+      "bad": "WHERE restaurant_code = '<rid>' directly on daily_orders"
+    },
+    {
+      "id": "R34",
+      "rule": "Widget CASE must follow strict top-down precedence. (1) OL context check first — page+widget combined. (2) multiple_outlet_carousels_new sub-typed by full wt string for reorder/recommended. (3) Named exact carousels: homepage_carousel_featured, pre_search_ads_carousel, uae_hompage_new_cuisine_tiles, uae_homepage_newusptile_2. (4) Broad: %banner%. (5) Broad fallback: %carousel%. (6) 'others'. Never place %carousel% before named carousels — it silently absorbs Feature Bite, Pre Search, reorder, recommended into the wrong bucket with no error.",
+      "good": "CASE WHEN lower(widget) LIKE '%ol%' AND page='hp' THEN 'HP - OL' WHEN lower(widget) LIKE '%ol%' AND page='so' THEN 'SO - OL' WHEN lower(widget) LIKE '%ol%' AND page='sd' THEN 'SD - OL' WHEN lower(widget) LIKE '%ol%' THEN 'OL' WHEN lower(widget) LIKE '%multiple_outlet_carousels_new%' AND lower(full_wt) LIKE '%reorder%' THEN 'Multiple_Carousel_Reorder' WHEN lower(widget) LIKE '%multiple_outlet_carousels_new%' AND lower(full_wt) LIKE '%recommended%' THEN 'Multiple_Carousel_Recommended' WHEN lower(widget) LIKE '%homepage_carousel_featured%' THEN 'Feature Bite' WHEN lower(widget) LIKE '%pre_search_ads_carousel%' THEN 'Pre Search' WHEN lower(widget) LIKE '%uae_hompage_new_cuisine_tiles%' THEN 'Cuisine Tile' WHEN lower(widget) LIKE '%uae_homepage_newusptile_2%' THEN 'Usptile' WHEN lower(widget) LIKE '%banner%' THEN 'Banner' WHEN lower(widget) LIKE '%carousel%' THEN 'Carousel' ELSE 'others' END",
+      "bad": "CASE WHEN lower(widget) LIKE '%carousel%' THEN 'Carousel' WHEN lower(widget) LIKE '%homepage_carousel_featured%' THEN 'Feature Bite' END -- broad carousel match fires first, swallowing Feature Bite and Pre Search"
+    },
+    {
+      "id": "R35",
+      "rule": "For multiple_outlet_carousels_new sub-typing, the reorder/recommended keyword must be checked against the FULL $.wt string (not just SAFE_OFFSET(1) or SAFE_OFFSET(2)), because the keyword appears in deeper path segments beyond slot 1. SAFE_OFFSET(2) may be NULL.",
+      "good": "lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%multiple_outlet_carousels_new%' AND lower(JSON_EXTRACT_SCALAR(event_misc,'$.wt')) LIKE '%reorder%'",
+      "bad": "lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(2)]) LIKE '%reorder%' -- SAFE_OFFSET(2) may be NULL"
+    },
+    {
+      "id": "R36",
+      "rule": "Always apply lower() to both the extracted $.wt value AND all LIKE pattern comparisons for page and widget slots. Raw $.wt values can be mixed case. Never compare without lowercasing first.",
+      "good": "lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(0)]) LIKE '%hp%'",
+      "bad": "SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(0)] = 'hp'"
+    },
+    {
+      "id": "R37",
+      "rule": "The Cuisine Tile source string contains a deliberate typo: 'uae_hompage_new_cuisine_tiles' (missing 'e' in homepage). Always use the typo in LIKE patterns. Correcting it to 'homepage' will return zero rows.",
+      "good": "LIKE '%uae_hompage_new_cuisine_tiles%'",
+      "bad": "LIKE '%uae_homepage_new_cuisine_tiles%'"
+    },
+    {
+      "id": "R38",
+      "rule": "When a user asks for metrics from a named widget using natural language, always resolve to the canonical widget label before writing SQL. Never respond 'cannot identify widget' without first checking the alias map. Canonical mappings: 'reorder widget/carousel'→'Multiple_Carousel_Reorder'; 'recommended widget/carousel'→'Multiple_Carousel_Recommended'; 'feature bite/featured carousel'→'Feature Bite'; 'pre search/pre search ads'→'Pre Search'; 'cuisine tile'→'Cuisine Tile'; 'usp tile/usptile'→'Usptile'; 'ol widget/outlet list'→'OL/HP-OL/SO-OL/SD-OL'; 'banner'→'Banner'; 'carousel'→'Carousel (generic fallback only)'.",
+      "alias_map": {
+        "reorder widget": "Multiple_Carousel_Reorder",
+        "reorder carousel": "Multiple_Carousel_Reorder",
+        "recommended widget": "Multiple_Carousel_Recommended",
+        "recommended carousel": "Multiple_Carousel_Recommended",
+        "feature bite": "Feature Bite",
+        "featured carousel": "Feature Bite",
+        "pre search": "Pre Search",
+        "pre search ads": "Pre Search",
+        "cuisine tile": "Cuisine Tile",
+        "usp tile": "Usptile",
+        "usptile": "Usptile",
+        "ol widget": "OL / HP-OL / SO-OL / SD-OL",
+        "outlet list widget": "OL / HP-OL / SO-OL / SD-OL",
+        "homepage ol": "HP - OL",
+        "search ol": "SO - OL",
+        "banner": "Banner",
+        "carousel": "Carousel (generic fallback only)"
+      }
+    },
+    {
+  "id": "R44",
+  "rule": "GMV and AOV cannot be computed from nat_events_complete alone — that table has NO GMV column. For any widget AOV/GMV metric: (1) use nat_events_complete to get outlet_codes from transaction_v2 events filtered by widget, (2) JOIN to daily_orders on outlet_code=restaurant_code AND day=day to get GMV. AOV = SAFE_DIVIDE(SUM(do.GMV), COUNT(DISTINCT do.order_id)). The SELECT and SAFE_DIVIDE must reference daily_orders columns (do.GMV, do.order_id), not nat_events_complete columns.",
+  "good": "WITH widget_txns AS (SELECT JSON_EXTRACT_SCALAR(event_misc,'$.oc') AS outlet_code, day FROM noonbifood.growthv1.nat_events_complete WHERE event_type='transaction_v2' AND <widget_conditions>) SELECT t.day, SAFE_DIVIDE(SUM(do.GMV), COUNT(DISTINCT do.order_id)) AS AOV FROM widget_txns t JOIN noonbifood.reporting.daily_orders do ON t.outlet_code=do.restaurant_code AND t.day=do.day WHERE do.order_status='delivered' AND do.country='ae' GROUP BY 1 ORDER BY 1",
+  "bad_1": "SELECT SAFE_DIVIDE(SUM(GMV),...) FROM nat_events_complete -- GMV column does not exist in nat_events_complete",
+  "bad_2": "SELECT COUNT(DISTINCT transactionId) FROM nat_events_complete -- this gives transaction count, not AOV"
+},
+{
+  "id": "R55",
+  "description": "When asked to benchmark/compare the restaurant-level or outlet-level metrics, always benchmark against the cuisine group derived from daily_orders. The cuisine benchmark serves as the reference peer group — never benchmark in isolation or against the overall platform average unless explicitly asked for ",
+  "applies_to": [
+    "restaurant_conversion",
+    "outlet_conversion",
+    "session_to_order",
+    "impression_to_order",
+    "add_to_cart_rate",
+    "checkout_conversion"
+  ],
+  "source_table": "noonbifood.reporting.daily_orders",
+  "cuisine_column": "main_cuisine",
+  "enforcement": "STRICT",
+  "sql_guidance": {
+    "step_1": "Derive cuisine from daily_orders using main_cuisine for the same time window as the metric being computed.",
+    "step_2": "Compute the metric for all outlets/restaurants sharing the same main_cuisine value.",
+    "step_3": "Use that cuisine-level aggregate as the benchmark denominator or reference value.",
+    "step_4": "Present the entity metric alongside the cuisine benchmark — never present the metric alone."
+  },
+  "example_pattern": "SELECT main_cuisine, COUNT(DISTINCT outlet_id) AS outlets, SUM(orders) AS orders, SAFE_DIVIDE(SUM(orders), SUM(sessions)) AS conversion_rate FROM noonbifood.reporting.daily_orders WHERE day BETWEEN @start AND @end GROUP BY main_cuisine",
+  "notes": [
+    "main_cuisine must be sourced from daily_orders, not from outlet_status_complete, to reflect cuisine as seen in actual transactional data.",
+    "If a specific outlet has no orders in the window, it still belongs to the cuisine group of its most recent active orders.",
+    "Do not fall back to platform-wide averages when a cuisine group has fewer than 5 outlets — flag sparsity instead."
+  ]
+},
+{
+  "id": "R56",
+  "rule": "Restaurant names are NOT unique — the same name can map to multiple rcodes (e.g. 'KFC' has 20+ codes, 'Kfc' and 'KFC' are stored as separate entries). Never filter directly by restaurant_name alone. Always: (1) use LOWER() on both sides for case-insensitive matching, (2) first resolve the name to rcode(s) via a lookup on outlet_status_complete, (3) then filter downstream queries using rcode IN (...) — never by restaurant_name alone.",
+  "good": "SELECT DISTINCT restaurant_code FROM noonbifood.sales.outlet_status_complete WHERE LOWER(restaurant_name) = LOWER('KFC')",
+  "bad": "WHERE restaurant_name = 'KFC'"
+},
+{
+  "rule_id": "R57",
+  "category": "sql_filtering",
+  "title": "Fuzzy matching for item/brand/product names",
+  "enforcement": "STRICT",
+  "description": "When a user filters by item name, meal name, drink name, or brand name, always normalize both sides and use REGEXP_CONTAINS to catch all spacing/casing variants.",
+  "sql_pattern": "REGEXP_CONTAINS(LOWER(REPLACE(item_name, ' ', '')), r'<term_lowercased_no_spaces>')",
+  "example": {
+    "user_says": "redbull orders",
+    "term": "redbull",
+    "filter": "REGEXP_CONTAINS(LOWER(REPLACE(item_name, ' ', '')), r'redbull')",
+    "matches": ["Red Bull", "red bull", "RedBull", "RED BULL", "red-bull", "redbull"]
+  },
+  "applies_to": ["item_name", "outlet_name", "brand_name", "meal_name", "product_name"]
+}
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "project": "noonbifood",
+  "dataset": "out",
+  "tables": {
+    "brand": {
+      "full_ref": "noonbifood.out.brand",
+      "partitioned": true,
+      "columns": [
+        { "name": "id_brand", "type": "INTEGER" },
+        { "name": "code", "type": "STRING" },
+        { "name": "name", "type": "STRING" },
+        { "name": "id_partner_owner", "type": "INTEGER" },
+        { "name": "id_country", "type": "INTEGER" },
+        { "name": "is_deleted", "type": "INTEGER" },
+        { "name": "legal_entity_code", "type": "STRING" },
+        { "name": "bank_account_code", "type": "STRING" },
+        { "name": "contract_order_nr", "type": "STRING" },
+        { "name": "legal_entity_linked_at", "type": "TIMESTAMP" },
+        { "name": "created_at", "type": "TIMESTAMP" },
+        { "name": "updated_at", "type": "TIMESTAMP" },
+        { "name": "created_by", "type": "STRING" },
+        { "name": "name_canonical", "type": "STRING" }
+      ],
+      "join_keys": {
+        "to_venue": "id_brand"
+      },
+      "notes": "Primary brand identifier is code. id_partner_owner links to partner reference table."
+    },
+    "venue": {
+      "full_ref": "noonbifood.out.venue",
+      "partitioned": true,
+      "columns": [
+        { "name": "id_venue", "type": "INTEGER" },
+        { "name": "code", "type": "STRING" },
+        { "name": "id_brand", "type": "INTEGER" },
+        { "name": "internal_name", "type": "STRING" },
+        { "name": "types", "type": "STRING" },
+        { "name": "amenities", "type": "STRING" },
+        { "name": "dietary_restrictions", "type": "STRING" },
+        { "name": "cuisines", "type": "STRING" },
+        { "name": "schedule_hash", "type": "STRING" },
+        { "name": "consumer_visible_at", "type": "TIMESTAMP" },
+        { "name": "internal_phone", "type": "STRING" },
+        { "name": "phone", "type": "STRING" },
+        { "name": "supports_ordering", "type": "INTEGER" },
+        { "name": "is_deleted", "type": "INTEGER" },
+        { "name": "created_at", "type": "TIMESTAMP" },
+        { "name": "updated_at", "type": "TIMESTAMP" },
+        { "name": "operational_emails", "type": "STRING" }
+      ],
+      "join_keys": {
+        "to_brand": "id_brand"
+      },
+      "notes": "internal_name typically follows 'BrandName - Location' pattern. Location extracted via REGEXP_EXTRACT(internal_name, r'-\\s*(.*)')."
+    }
+  },
+  "common_join": "noonbifood.out.brand b LEFT JOIN noonbifood.out.venue v ON b.id_brand = v.id_brand",
+  "filter_column": "b.code"
+}

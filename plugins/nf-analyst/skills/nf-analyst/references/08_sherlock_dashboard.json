@@ -1,0 +1,389 @@
+{
+  "dashboards": [
+    {
+      "name": "Asset Performance",
+      "q": "To monitor the performance of live assets deployed by the onsite team, including banners and carousel placements, and to track minutes order performance driven by Noon Food assets",
+      "url": "https://lookerstudio.google.com/u/0/reporting/36cff924-98bd-4d03-9559-a6d2d176fae5",
+      "section": "Platform Growth"
+    },
+    {
+      "name": "Good Will Burn Tracker",
+      "q": "Day on Day view of Good Will Burn and its split for both countries",
+      "url": "https://lookerstudio.google.com/reporting/05ba9222-82df-4130-b6bc-cc5456b5fb3f"
+    },
+    {
+      "name": "Penetration Dashboard",
+      "q": "To check cross-marketplace penetration of Noon Food across all Noon(yellow app) marketplaces",
+      "url": "https://lookerstudio.google.com/u/0/reporting/b536c3fe-3121-4b3b-affa-1059f0c8847a/page/484DF"
+    },
+    {
+      "name": "Customer Health Dashboard",
+      "q": "Performance of active customer cohorts by new/repeat, retained/reactivatd, AOV, TPC, Orders etc.",
+      "url": "https://lookerstudio.google.com/u/0/reporting/0a91ed4f-fc2c-4af8-9a77-9c2eb1a5d5dd/page/p_8rhk0o1lsc/edit"
+    },
+    {
+      "name": "Monthly new user cohort",
+      "q": "To track Month-on-Month (MoM) acquisition, retention, and user growth metrics up to M14 at country and city level, user lifecycle cohort framework.",
+      "url": "https://docs.google.com/spreadsheets/d/1pZiJPcAYO91GuvdufqENoksz9t6kwvZ6kZXNtW0BMPU/edit?usp=drive_open&ouid=103578345492151518412"
+    },
+    {
+      "name": "Weekly Growth Dashboard",
+      "q": "Weekly Growth / Experience / Discounts / Retention and Reactivation Overview",
+      "url": "https://lookerstudio.google.com/u/0/reporting/f712d928-1fe6-404d-ba6e-61dfff349954/page/EtaMC/edit"
+    },
+    {
+      "name": "Platform/Language Growth Dashboard",
+      "q": "Day on Day view of platform/language level growth for both countries",
+      "url": "https://docs.google.com/spreadsheets/d/1NIgV4BoupAO__A_7oRx1kpd8Lm-JKffBVGvMiN9vNxk/edit?gid=1755162253#gid=1755162253"
+    },
+    {
+      "name": "Monthly Growth Dashboard",
+      "q": "UAE Monthly Growth / Experience / Discounts / Retention and Reactivation Overview",
+      "url": "https://df-rserver-vision.noon.team/"
+    },
+    {
+      "name": "To the moon",
+      "q": "All things Growth for live and DoD views--UAE",
+      "url": "https://docs.google.com/spreadsheets/d/1rGGWoRHyCBfWfIn57o-OG0Vg0xspmoXSyKNnp5xCKfM/edit?gid=617633830#gid=617633830",
+      "section": "UAE Growth"
+    },
+    {
+      "name": "Project- Sugar and Spice",
+      "q": "Customer funnel sliced by noon one vs non one customers",
+      "url": "https://docs.google.com/spreadsheets/d/10KK8iSCRKlQIBW9vMFl814jLS8J9JnPxs0DeQJF62fE"
+    },
+    {
+      "name": "Project Noodles NAT",
+      "q": "Channel level sessions and CR at overall and city level for UAE",
+      "url": "https://docs.google.com/spreadsheets/d/1IB64J8veV7wQ1SluZHfavcFwBeiCk2RSJ5rp7uEdXcA"
+    },
+    {
+      "name": "Project- Hubz NAT",
+      "q": "City level split of Sessions and CR & Channel Level Deepdive for cities",
+      "url": "https://docs.google.com/spreadsheets/d/1mn4CA3ljCPZeKYXA7U4BQbq_Q1sD06RWMTR2J5uTnbQ"
+    },
+    {
+      "name": "Yellow App Asset Performance",
+      "q": "All Yapp (Supermall, Minutes, noon Core) asset performance",
+      "url": "https://docs.google.com/spreadsheets/d/1NcmRMjslF4dinVe-Fpg9gQvjP9XdAKmuLUkhkD9ghb0"
+    },
+    {
+      "name": "Noon One Performance Review",
+      "q": "Day on Day Acquisitions on noon one, ENBD performance",
+      "url": "https://docs.google.com/spreadsheets/d/1_ADm6LVbHZRRW-uIlm0mmjKqkgrdi4MIXXNFavHBk6c/edit?gid=1297855052#gid=1297855052"
+    },
+    {
+      "name": "DM performance",
+      "q": "Digital Marketing (DM) Performance Tracker",
+      "url": "https://lookerstudio.google.com/reporting/6483a8ee-a188-43a6-b44d-34d4c1deba01"
+    },
+    {
+      "name": "Hyper FTU & Lapsed discount Tracker - UAE",
+      "q": "Hyper FTU and Lapsed discounts redemption, redemption charge and burn for daily and monthly",
+      "url": "https://lookerstudio.google.com/u/0/reporting/10c2de07-3fc0-4949-b5f4-bd7a4c65adbb/page/usoBE/edit"
+    },
+    {
+      "name": "To the moon",
+      "q": "All things Growth for live and DoD views --KSA",
+      "url": "https://docs.google.com/spreadsheets/d/1Y_kOSRvTkLODsap07ae9YhwmlYiEBxMPmudYoOW5bx4/edit?gid=617633830#gid=617633830",
+      "section": "KSA Growth"
+    },
+    {
+      "name": "KSA Project Noodles NAT",
+      "q": "PF level sessions, CR, Funnel and other metrics",
+      "url": "https://docs.google.com/spreadsheets/d/1XgeUfeRvMIpa5zmslCAOZiTQs-LlRR9YfRyG2700EKI/"
+    },
+    {
+      "name": "KSA Project Hubz NAT",
+      "q": "City/ Hub level sessions, CR, Funnel and other metrics",
+      "url": "https://docs.google.com/spreadsheets/d/1XgeUfeRvMIpa5zmslCAOZiTQs-LlRR9YfRyG2700EKI/edit"
+    },
+    {
+     "name": "FLash | Performance Tracker",
+      "q": "Noon Food - UAE Flash Performance",
+      "url": "https://docs.google.com/spreadsheets/d/1I8gYK6KvbLkPx-w_M0YmFqx-hA6_Z2tNLI5jG0meSVs/edit?gid=104644099#gid=104644099",
+      "section": "Food in 15 minutes"
+    },
+    {
+      "name": "RTE on nF | Performance tracking",
+      "q": "Order and logistics performance tracking for Ready to eat cross listings on food",
+      "url": "https://docs.google.com/spreadsheets/d/1r-tcQrvadUTIiF9vv5CXPERgaIQfvk_0C0XU0CARkho/edit?pli=1&gid=1300203089#gid=1300203089"
+    },
+    {
+      "name": "Go Kitchen Performance",
+      "q": "Go Kitchen Overall Performance",
+      "url": "https://docs.google.com/spreadsheets/d/1ye-tJka-opp8JohAcaca1mhZ2kRrf08PYR2y2HKfwhM/edit?pli=1&gid=1333727309#gid=1333727309"
+    },
+    {
+      "name": "DM Dashboard",
+      "q": "Digital Marketing daily and weekly tracker",
+      "url": "https://docs.google.com/spreadsheets/d/1bXA67CWYZA7jwMddsVoc_VT42c998gOLOPQ7kxsLvl0/edit?gid=0#gid=0",
+      "section": "Channel Performance"
+    },
+    {
+      "name": "Scrooge Dashboard",
+      "q": "Digital Marketing daily and weekly tracker",
+      "url": "https://docs.google.com/spreadsheets/d/1B6_KmG1MNPVj8KKMBroPWTrs74rbcFPZ3LXkCtsv210/edit?gid=196323281#gid=196323281"
+    },
+    {
+     "name": "Business Development Incentives - UAE",
+      "q": "Monthly Performance Tracker for BD incentives",
+      "url": "https://lookerstudio.google.com/u/0/reporting/e315cb07-a8cd-40d3-b8e0-ebb1a70244a8/page/eMaEE",
+      "section": "Sales Overview"
+    },
+    {
+      "name": "BD Incentive - UAE",
+      "q": "A consolidated sheet to track performance at all levels within the team. Includes a scorecard showing each AM's target, achievement, and pending goals.",
+      "url": "https://lookerstudio.google.com/u/0/reporting/1f8175d4-20d5-48cb-9de5-32bbbd024aa7/page/d8tBE"
+    },
+    {
+      "name": "Master AM Performance tracker - UAE",
+      "q": "A consolidated sheet to track performance at all levels within the team. Includes a scorecard showing each AM's target, achievement, and pending goals.",
+      "url": "https://docs.google.com/spreadsheets/d/1he1QgEkCe8_qKdS5KxdGONDuVzMkz7_DNU2DSy4Pe0s/edit?gid=0#gid=0"
+    },
+    {
+      "name": "AM Mapping - Panel (To Map PIDs ) - UAE",
+      "q": "Commericial team use this looker studio to map PID and AMs",
+      "url": "https://lookerstudio.google.com/u/0/reporting/e73f046e-3979-4d4e-98e8-3d006a8d576e/page/cXbyD"
+    },
+    {
+      "name": "AMP - Outlet Level & Day Level Data - UAE",
+      "q": "Impression, clicks, orders, gmv on oultet code level",
+      "url": "https://lookerstudio.google.com/u/0/reporting/80eab638-42ff-4337-9032-b71058441eb5/page/p_syorozqygd"
+    },
+    {
+      "name": "AMs Top 20 Brands - UAE",
+      "q": "",
+      "url": "https://lookerstudio.google.com/u/0/reporting/6ff1551a-9501-4235-b66f-6d36697a5640/page/g2cnD"
+    },
+    {
+      "name": "AM Tracker L2 View - UAE",
+      "q": "Consolidated view to check on defaulters of each metric at a monthly and AM level",
+      "url": "https://docs.google.com/spreadsheets/d/1kV0E5vFxAavCIvnNdfBOzTMmhul4qPVcvcQJLU71efU/edit?gid=1523248286#gid=1523248286"
+    },
+    {
+      "name": "Restaurant Funded discounts converage - UAE",
+      "q": "Restaurant funded discount coverage - UAE only",
+      "url": "https://lookerstudio.google.com/u/0/reporting/9edde15d-e8e9-4788-a34c-5113476ba454/page/p_gk8kaoykfd"
+    },
+    {
+      "name": "Restaurant Funnel Dashboard",
+      "q": "Funnel level view for restaurants tracking outlet visits , atc, checkout and orders",
+      "url": "https://lookerstudio.google.com/u/0/reporting/90b2abd4-07a6-4351-829d-87f6bc84650e/page/pvHFF?s=pN8kMGsWPcA",
+      "section": "Commercial"
+    },
+    {
+      "name": "Lapsed Customers Data brand wise",
+      "q": "",
+      "url": "https://lookerstudio.google.com/u/0/reporting/dddf1e30-1505-4152-a8de-9d9b32507681/page/1pjyD"
+    },
+    {
+      "name": "CPC 2.0  Analysis",
+      "q": "To keep the track of exclusive brands - UAE",
+      "url": "https://docs.google.com/spreadsheets/d/1aFEQufcNxWc6eMNFR87iJJ8FJlDW6NE5-5f-h4eXDz8/edit?gid=1056585941#gid=1056585941"
+    },
+    {
+      "name": "Key Brands Initiatives",
+      "q": "",
+      "url": "https://docs.google.com/spreadsheets/d/1eMhCAMpQ5vACg5ClFgFgaaxoTU8Oi-78yA5e-GY81bc/edit?gid=0#gid=0"
+    },
+    {
+      "name": "OOS Dashboard - BFF and DOTD category",
+      "q": "Out of stock items",
+      "url": "https://lookerstudio.google.com/u/0/reporting/83653b08-52e0-4541-8c71-a39d77435161/page/xBUaD"
+    },
+    {
+      "name": "Item Finder",
+      "q": "To check items and category that are live on App",
+      "url": "https://lookerstudio.google.com/u/0/reporting/60d07ac7-3f13-498d-bec5-89b4384ce8fc/page/eapgD"
+    },
+    {
+      "name": "Partner PnL- Iniatives",
+      "q": "Streamlined process of recording revenue against a brand",
+      "url": "https://docs.google.com/spreadsheets/d/1IEaybwz_aefw1IdUfmKvyByefTgkqGmFHlG0gGqWPPo/edit?gid=131749945#gid=131749945"
+    },
+    {
+      "name": "Banners and Other Revenue recording Panel",
+      "q": "PepsiCo Products performance - orders & incidence rate weekly & monthly levels",
+      "url": "https://lookerstudio.google.com/u/0/reporting/80eab638-42ff-4337-9032-b71058441eb5/page/p_syorozqygd"
+    },
+    {
+      "name": "PepsiCo - Performance",
+      "q": "To track performance of teams (catalog, integration,qc and integration) on zoho - UAE &KSA",
+      "url": "https://lookerstudio.google.com/u/0/reporting/f5fec159-df80-4850-9aa2-b668a9d2e584/page/p_1rlv50redd"
+    },
+    {
+      "name": "Zoho Tracker",
+      "q": "QC rejection and performance of the team",
+      "url": "https://lookerstudio.google.com/u/0/reporting/2e55d301-60c6-466a-8835-7d02afab1c54/page/p_t0gk4ooand",
+      "section": "Catalog"
+    },
+    {
+      "name": "Catalog Glance",
+      "q": "QC rejection and performance of the team",
+      "url": "https://lookerstudio.google.com/u/0/reporting/5c68b8f3-c189-4109-8e69-c1b2b488d5f1/page/l02DD"
+    },
+    {
+      "name": "Leads Universe - Coverage",
+      "q": "To check the leads available vs the coverage with simplified record maintaining for leads progress",
+      "url": "https://lookerstudio.google.com/u/0/reporting/0f17019d-520b-4aed-badd-62e9317d33d0/page/p_tyv3cfx41c",
+      "section": "Supply"
+    },
+    {
+      "name": "Grey Out Sessions - KSA",
+      "q": "This Dashboard tells us the % of Grey Out Sessions being observed at both Page Outlet and Outlet Impression Level. Is Useful is figuring out the S2O and O2PI funnel drop in KSA",
+      "url": "https://lookerstudio.google.com/s/pKXKJeHw9FA"
+    },
+    {
+      "name": "Deleted & Shutdown outlets with reason",
+      "q": "Tracking for Deleted and shutdown outlets",
+      "url": "https://lookerstudio.google.com/u/0/reporting/1122eb16-8a50-43c6-aaca-57ab59d9d3bc/page/I3dHF"
+    },
+    {
+      "name": "RDF KSA",
+      "q": "Tracking for Restaurant delivery funded restaurants",
+      "url": "https://lookerstudio.google.com/reporting/ae910c2c-c321-4549-8b55-55c2ee63b6d1"
+    },
+    {
+      "name": "Spotlight Performance Dashboard",
+      "q": "Track brand performance live on spotlight and floating button features",
+      "url": "https://lookerstudio.google.com/u/0/reporting/f2973e2c-c255-4e3b-9d3f-b3951b3e6476/page/88OPF",
+      "section": "Commercial Admon"
+    },
+    {
+      "name": "Admon Tracker",
+      "q": "Budget, % Revenue Realized, Outlet Penetration, Paid vs. Free Campaigns, and Search & Listing Campaigns.",
+      "url": "https://lookerstudio.google.com/u/0/reporting/3e29b433-01cf-44c9-a764-81793a25c492/page/p_4cd0obvkqd/edit"
+    },
+    {
+     "name": "Single Step Checkout",
+      "q": "Tracking for Single Step Checkout widget",
+      "url": "https://lookerstudio.google.com/reporting/db7a3a9e-a4e3-4698-8107-f1205e43665c"
+    },
+    {
+      "name": "Hot Pot Dashboard (Search Trends)",
+      "q": "To track search trends across country",
+      "url": "https://lookerstudio.google.com/u/0/reporting/24c28d8f-7f4c-44b9-88a0-b67c528e82c6/page/cBbMD"
+    },
+    {
+      "name": "Live Order Management System",
+      "q": "LOMS dashboard",
+      "url": "https://lookerstudio.google.com/u/0/reporting/b3bf417d-97d6-444b-ace4-afce4c702073/page/TTWOF"
+    },
+    {
+      "name": "Logistics KPI KSA",
+      "q": "Key Logistics KPIs: Week-over-Week and Day-over-Day Trend Analysis.",
+      "url": "https://docs.google.com/spreadsheets/d/1LsibKM0AbN4iq22dBRMMppzMENpp6sCysx5PZpYXYiA"
+    },
+    {
+      "name": "Logistics KPI-UAE",
+      "q": "Key Logistics KPIs of Noon Food UAE: Week-over-Week and Day-over-Day Trend Analysis",
+      "url": "https://docs.google.com/spreadsheets/d/1PEaa-QqiaBn9SRNWvLXw0xjriBv3Jfs1OtirAzVUIJk"
+    },
+    {
+      "name": "Outlet & Menu QC Status - WIP",
+      "q": "To identify and get all the details of Menu and Outlet QC Colloborative Raw Data",
+      "url": "https://docs.google.com/spreadsheets/d/12smCvPlC7QedwRTuji7Q_ks8xi6ZjHdW0zjnP4_I1hU/edit?gid=1885413514#gid=1885413514"
+    },
+    {
+      "name": "ResOps Stats",
+      "q": "All about ResOps (Hot Seat)",
+      "url": "https://lookerstudio.google.com/u/0/reporting/16abc68b-d6af-4d2b-bcf6-22f39d3d0c0d/page/p_k7lk0gl5oc"
+    },
+    {
+      "name": "Breach Overview",
+      "q": "Orders overview of each leg (delivered, canceled, rejection and their sub buckets of breaches if there is any) plus you will get order level estimated and actual timestamps",
+      "url": "https://lookerstudio.google.com/u/0/reporting/1155e06d-a7ac-4b92-a749-c707518fa1e6/page/XM9OC"
+    },
+    {
+      "name": "Shutdown Summary - Need Attention",
+      "q": "Shutdown outlets with reason - KSA",
+      "url": "https://lookerstudio.google.com/u/0/reporting/20725edb-8113-4f8b-a5b5-4d15f1662a4e/page/FsBPC"
+    },
+    {
+      "name": "Activation Meter",
+      "q": "From partner onboarding to activation. All menu and outlet related details like first qc date to activation date",
+      "url": "https://lookerstudio.google.com/u/0/reporting/53a132aa-bedc-45d3-9b23-f67b453c9d16"
+    },
+    {
+      "name": "Outlet Activation Management",
+      "q": "This is for the OG team to activate the outlets and record the response using looker studio dashboard",
+      "url": "https://lookerstudio.google.com/u/0/reporting/1132d197-a59b-4b09-9860-fc997eeb6502/page/WLq4C"
+    },
+    {
+      "name": "Central Report - ResOps",
+      "q": "Outlets funnel and pendency",
+      "url": "https://lookerstudio.google.com/u/0/reporting/651ba087-f870-4667-8b30-a7f21088ddc0/page/p_jam5gqep1c"
+    },
+    {
+      "name": "UAE - Inbound Calls data",
+      "q": "UAE noon food inbound calls and assignee details",
+      "url": "https://lookerstudio.google.com/u/0/reporting/f356acef-92c3-4fde-a8e8-444a6392c19d/page/p_o9ei9az6oc"
+    },
+    {
+     "name": "Shots in Noon Food",
+      "q": "Shots Outlets Performance in Noon Food",
+      "url": "https://docs.google.com/spreadsheets/d/1hmI2JoDJY66fMSXUkckpiLRmCnNM4vJWZFDqotOZoYo/edit?gid=1300203089#gid=1300203089"
+    },
+    {
+      "name": "Impact Analysis of Ad Slot",
+      "q": "Impact of chaging ad slot from 2,3,5,6,8,9 to 2,4,6,8 and should we make this change or not",
+      "url": "https://docs.google.com/spreadsheets/d/16lTcLxQYIVJnS1ELWIAUN_sae66ap1i1Ll5YF89Fqz0/edit?gid=257584769#gid=257584769"
+    },
+    {
+      "name": "Starbucks Item Analysis",
+      "q": "Starbucks Analysis",
+      "url": "https://docs.google.com/spreadsheets/d/1GrjOHyUh5ZGbYOdMwxERKBpSOsdCMdcRb99psLJVqh8/edit?gid=317319466#gid=317319466"
+    },
+    {
+      "name": "Indian Restaurant Analysis",
+      "q": "Analysis about Indian Restaurant and Top 10 Cuisines",
+      "url": "https://docs.google.com/spreadsheets/d/19RFUmsIhvXO9zlvUuSpFi6YgTU0d1nPMSj0n9_U9rP4/edit?gid=744889677#gid=744889677"
+    },
+    {
+      "name": "Item - CTR - ATC",
+      "q": "Item level - Page Outlet -> Item Page -> Item Clicked -> Item Added",
+      "url": "https://docs.google.com/spreadsheets/d/114fdB9jOuRobOTz-RnigCE2kC7lO0BBhbO6x3XZ79_k/edit?gid=1542277119#gid=1542277119"
+    },
+    {
+      "name": "Food in 15 | Performance Tracker",
+      "q": "Dashboard to track order and logistics performance for food qs",
+      "url": "https://docs.google.com/spreadsheets/d/1HR5k5amj-uo1cPBOU8wI2vgW850LiVtUYtHbdTZiR_o/edit?pli=1&gid=0#gid=0"
+    },
+    {
+      "name": "Flash Launch in KSA",
+      "q": "Lead list and process for Flash expansion.",
+      "url": "https://docs.google.com/spreadsheets/d/1k70mn1_frIL25jHVgvEhy29oaI8P4j2exJu-FgxghZo/edit?gid=0#gid=0"
+    },
+    {
+      "name": "Growth Water Fall View",
+      "q": "Study of cadence of Customers during a Week",
+      "url": "https://docs.google.com/spreadsheets/d/1gn2lOQm_g44J6ci0uUq_lkvgSIC4rVeUXE1xDkk7Nek/edit?pli=1&gid=568988412#gid=568988412"
+    },
+    {
+      "name": "Featured & Spotlight - Incremental Impact",
+      "q": "Incremental Impact by Impression per sessions",
+      "url": "https://docs.google.com/spreadsheets/d/1TZ8GvTJP99DjndWrYDHI6gRoocwvSiMam9j1iUB7BNY/edit?gid=1683247920#gid=1683247920"
+    },
+    {
+      "name": "Ad Sorting Logic Experiment v0/v1",
+      "q": "CTR , CTO , Ebid",
+      "url": "https://docs.google.com/spreadsheets/d/1E3zl02C6HUqjgWbk2h60_QGR-4Lmob9YJuvDSByopoo/edit?gid=843988140#gid=843988140"
+    },
+    {
+      "name": "Ad Tag Hide Experiment Results",
+      "q": "CTR , CTO , Ebid",
+      "url": "https://docs.google.com/spreadsheets/d/1ibA8bljTjzHNH2IHZImWVDxxS7NTRqySvxYtGdZzhhY/edit?gid=1822914232#gid=1822914232"
+    },
+    {
+      "name": "% GMV Contribution - Upsell",
+      "q": "GMV Contribution from Upsell Features (Carousel, Pop-up)",
+      "url": "https://docs.google.com/spreadsheets/d/1vp1Kj6FIGNQb4uuKrT-WLDeqJ1KByKaHHYGRghOK9m8/edit?gid=1398305303#gid=1398305303"
+    },
+    {
+      "name": "Virtual Stores | Performance Insights",
+      "q": "To track perfomance of virtual stores live via noon food",
+      "url": "https://lookerstudio.google.com/u/0/reporting/caf0d259-2bb1-49ba-9a4c-5b840acde426"
+    }
+  ]
+}

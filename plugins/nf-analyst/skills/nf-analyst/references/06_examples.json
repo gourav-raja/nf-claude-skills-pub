@@ -1,0 +1,256 @@
+{
+  "examples": [
+    {
+      "id": "E01",
+      "q": "Active customers May 2025 UAE",
+      "tables": ["daily_orders"],
+      "note": "COUNT(DISTINCT customer_id); order_status='delivered', country='ae'"
+    },
+    {
+      "id": "E02",
+      "q": "New vs repeat customers per day last 7d",
+      "tables": ["daily_orders"],
+      "note": "ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY day); rn=1→new, rn>1→repeat. order_status='delivered', country='ae'"
+    },
+    {
+      "id": "E03",
+      "q": "Live outlets in Dubai",
+      "tables": ["outlet_status_complete"],
+      "note": "No day filter. status='active' AND is_consumer_visible='1' AND outlet_deleted=0"
+    },
+    {
+      "id": "E04",
+      "q": "Live outlet count per city UAE",
+      "tables": ["outlet_status_complete"],
+      "note": "Same as E03, GROUP BY city"
+    },
+    {
+      "id": "E05",
+      "q": "Funnel conversion Dubai yesterday",
+      "tables": ["daily_hubz_rca_nat"],
+      "note": "SAFE_DIVIDE(Rel_Txn,Rel_OA). Day=yesterday, Country='ae', City='Dubai'"
+    },
+    {
+      "id": "E06",
+      "q": "Sessions UAE last week new vs repeat",
+      "tables": ["daily_hubz_rca_nat"],
+      "note": "SUM(New_Food_Sessions), SUM(Repeat_Food_Sessions). Last week = DATE_TRUNC(DATE_SUB(CURRENT_DATE(),INTERVAL 7 DAY),WEEK) to yesterday"
+    },
+    {
+      "id": "E07",
+      "q": "Bounce rate per hub yesterday",
+      "tables": ["daily_hubz_rca_nat"],
+      "note": "SAFE_DIVIDE(Bounce_Sessions,Food_Sessions) GROUP BY Hub,City"
+    },
+    {
+      "id": "E08",
+      "q": "Session count per user May 2025 UAE",
+      "tables": ["nat_events_complete"],
+      "note": "COUNT(DISTINCT sid) per uid. locale LIKE '%ae%'"
+    },
+    {
+      "id": "E09",
+      "q": "Checkout drop rate UAE last 30d",
+      "tables": ["nat_events_complete"],
+      "note": "checkout_starts=COUNT(DISTINCT sid WHERE event_type='page_checkout'). drop=SAFE_DIVIDE(starts-txns,starts). locale LIKE '%ae%'"
+    },
+    {
+      "id": "E10",
+      "q": "AOV per city May 2025",
+      "tables": ["daily_orders"],
+      "note": "SAFE_DIVIDE(SUM(GMV),COUNT(DISTINCT order_id)). order_status='delivered', country='ae'"
+    },
+    {
+      "id": "E11",
+      "q": "Customers ordered from >3 restaurants May 2025",
+      "tables": ["daily_orders"],
+      "note": "COUNT(DISTINCT restaurant_code) per customer. HAVING>3. order_status='delivered', country='ae'"
+    },
+    {
+      "id": "E12",
+      "q": "Cancel rate per city last month",
+      "tables": ["daily_orders"],
+      "note": "SAFE_DIVIDE(COUNTIF(order_status='canceled'),COUNT(*)). Include both delivered+canceled."
+    },
+    {
+      "id": "E13",
+      "q": "CRM session share last week UAE",
+      "tables": ["daily_hubz_rca_nat"],
+      "note": "SAFE_DIVIDE(SUM(CRM_Sessions),SUM(Relevant_Sessions))"
+    },
+    {
+      "id": "E14",
+      "q": "Median inter-order gap May 2025",
+      "tables": ["daily_orders"],
+      "note": "DATE_DIFF with LAG(order_placed_at). APPROX_QUANTILES(gap,100)[OFFSET(50)]. Exclude NULLs."
+    },
+    {
+      "id": "E15",
+      "q": "% orders with promo last month UAE",
+      "tables": ["daily_orders"],
+      "note": "SAFE_DIVIDE(COUNTIF(Promo_name IS NOT NULL),COUNT(*)). order_status='delivered', country='ae'"
+    },
+    {
+      "id": "E16",
+      "q": "Weekly funnel by city for McDonald's",
+      "tables": ["nat_events_complete", "temp_outlet_status", "session_segments_nat"],
+      "note": "Filter via JSON_EXTRACT_SCALAR(EVENT_MISC,'$.oc') LIKE '%MCDNLD%'. JOIN temp_outlet_status ON oc=outlet_code for city. LEFT JOIN session_segments_nat to exclude bounced/moved. Week=DATE_TRUNC(day,WEEK(MONDAY)). Events: page_outlet_v2, outlet_impression_v2, add_to_cart_v2, transaction_v2"
+    },
+    {
+      "id": "E17",
+      "q": "Ping orders (total/delivered/cancelled/failed) and fees by day",
+      "tables": ["noondwh.fdping_ping.ping_order"],
+      "note": "Table in noondwh.fdping_ping not noonbifood. UAE time: TIMESTAMP_ADD(created_at,INTERVAL 4 HOUR). Exclude 3 internal test customer_codes. Default lookback CURRENT_DATE-65. Fees=SUM(order_payment_amount) delivered only."
+    },
+    {
+      "id": "E18",
+      "q": "Ping sessions and converted sessions by day",
+      "tables": ["noondwh.fdping_ping.session"],
+      "note": "converted=status='placed'. Same +4H offset and test-user exclusions as E17"
+    },
+    {
+      "id": "E19",
+      "q": "Ping avg pickup/assignment/delivery/O2D by day",
+      "tables": ["noondwh.fdping_ping.ping_order"],
+      "note": "All timestamps +4H. TIMESTAMP_DIFF in MINUTE. assignment=assigned_at-created_at, pickup=picked_up_at-assigned_at, delivery=delivered_at-picked_up_at, O2D=delivered_at-created_at. Delivered only."
+    },
+    {
+      "id": "E20",
+      "q": "Ping payment methods by day",
+      "tables": ["noondwh.fdping_ping.ping_order"],
+      "note": "Normalise: cod→COD, apple_pay→Apple_Pay, cc_noonpay→Credit_Card. Delivered only. +4H offset."
+    },
+    {
+      "id": "E21",
+      "q": "Ping on-time delivered orders by day",
+      "tables": ["noondwh.fdping_ping.ping_order"],
+      "note": "on-time=delivered_at<=TIMESTAMP(JSON_VALUE(eta_breakdown,'$.estimated_delivered_at')). Delivered, exclude test customers."
+    },
+    {
+      "id": "E22",
+      "q": "Ping last mile distance (LMD) km by day",
+      "tables": ["noondwh.fdping_ping.ping_order", "noondwh.scfood_foodlogistics.task", "noondwh.scfood_foodlogistics.task_misc"],
+      "note": "ping_order→task(ON order_nr=order_ref_nr)→task_misc(ON id_task). km=distance/1000. order_ref_nr IS NOT NULL. Delivered. +4H. Lookback ~70d on logistics."
+    },
+    {
+      "id": "E23",
+      "q": "Total commission per order from food_order",
+      "tables": ["noondwh.food_finance.food_order"],
+      "note": "Fees in target_fees JSON, stored in smallest unit (/100). Commission=lead_gen+delivery+payment+cancellation fees via JSON_EXTRACT_SCALAR cast NUMERIC."
+    },
+    {
+      "id": "E24",
+      "q": "Meal plan top funnel by week: impressions, plan clicks, config selections",
+      "tables": ["noonbifood.growthv1.mealplan_funnel_daily_agg", "noonbifood.growthv1.uid_plt_lang_build", "noondwh.food_food_order.mpnoon_meal_plan_model"],
+      "note": "Plan_Name: mpc=NULL/'default#ae'→'Customize Plan'; else JOIN mpnoon_meal_plan_model ON UPPER(mpc)=UPPER(model_code). Platform/lang from uid_plt_lang_build JOIN uid+day. Week=Sunday via DATE_SUB(event_date,INTERVAL EXTRACT(DAYOFWEEK FROM event_date)-1 DAY). City: DXB/AUH/Other. Metrics: COUNT(DISTINCT IF(flag=1,uid,NULL)) per step."
+    },
+    {
+      "id": "E25",
+      "q": "Meal plan bottom funnel by week: nutrition/customise/replace/cart/bookings",
+      "tables": ["noonbifood.growthv1.mealplan_funnel_daily_agg", "noonbifood.growthv1.mealplan_remain_funnel", "noonbifood.growthv1.mealplan_info", "noondwh.food_food_order.mpnoon_meal_plan_model"],
+      "note": "LEFT JOIN mealplan_remain_funnel ON uid/Plan_Name/event_date for nutrition/customise/replace/note/Brand_RX. Booked=id_status_payment=4 in mealplan_info."
+    },
+    {
+      "id": "E26",
+      "q": "Widget level funnel for yesterday (impressions → visit → ATC → checkout → transaction)",
+      "tables": ["noonbifood.growthv1.nat_events_complete"],
+      "note": "Use nat_events_complete, NOT raw_events_v2. Page = lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(0)]); normalize: '%d1%'→'D1','%d2%'→'D2','%dp%'→'DP'. Widget = lower(SAFE_OFFSET(1)); apply canonical label via R34 CASE block. Session metrics: COUNT(DISTINCT CASE WHEN event_type=X THEN sid END). OC metrics: COUNT(DISTINCT CASE WHEN event_type=X THEN JSON_EXTRACT_SCALAR(event_misc,'$.oc') END). Food filter: JSON_VALUE(event_misc,'$.szf') IS NOT NULL OR JSON_VALUE(event_misc,'$.mpe')='food'. locale LIKE '%ae%'. day=CURRENT_DATE()-1. event_types: outlet_impression_v2, page_outlet_v2, item_impression, item_click_v2, add_to_cart_v2, page_checkout_v2, place_order_v2, transaction_v2. GROUP BY Page, Widget."
+    },
+    {
+      "id": "E27",
+      "q": "Meal plan weekly bookings: new vs repeat",
+      "tables": ["noonbifood.growthv1.mealplan_info"],
+      "note": "Paid=id_status_payment=4. New=booked_date=MIN(created_at) ever. Lang:'%ar%'→Arabic,'%en%'→English. Group by week,city,platform,lang,customer_type."
+    },
+    {
+      "id": "E28",
+      "q": "Calculate DFS (Delivery Fee Subsidy)",
+      "formula": "ROUND((o.delivery_fee + d.current_delivery_subsidy) / 1.05, 2)",
+      "note": "Divides by 1.05 to strip VAT (5%). Result rounded to 2 decimal places."
+    },
+    {
+      "id": "E29",
+      "q": "All noon_one (VIP) active subscribers as of today",
+      "tables": ["noondwh.loyalty_v2.customer_plan", "noondwh.ref.plan", "noondwh.ref.tier"],
+      "note": "SELECT DISTINCT customer_code AS customer_id, 1 AS is_vip FROM noondwh.loyalty_v2.customer_plan INNER JOIN (SELECT id_plan, country_code, plan_code, amount, trial_days, tier_code FROM noondwh.ref.plan LEFT JOIN noondwh.ref.tier USING (id_tier) WHERE country_code IN ('AE','SA') AND plan_type = 'buy_in' AND plan_code NOT LIKE 'test%') USING (id_plan) WHERE is_active = 1"
+    },
+    {
+      "id": "E30",
+      "q": "In nat_events_complete, outlet_code field differs by event_type",
+      "rule": "Use AID for 'outlet_impression_v2'; use OC for 'page_outlet_v2','add_to_cart_v2','transaction_v2'. Never use OC for impressions or AID for transactions.",
+      "good": "CASE WHEN event_type='outlet_impression_v2' THEN JSON_EXTRACT_SCALAR(event_misc,'$.aid') WHEN event_type IN ('page_outlet_v2','add_to_cart_v2','transaction_v2') THEN JSON_EXTRACT_SCALAR(event_misc,'$.oc') END",
+      "bad": "JSON_EXTRACT_SCALAR(event_misc,'$.oc') for all event types including outlet_impression_v2"
+    },
+    {
+      "id": "E31",
+      "q": "Transaction counting in nat_events_complete",
+      "rule": "Use COUNT(DISTINCT REPLACE(JSON_EXTRACT(event_misc,'$.transactionId'),'\"','')) WHERE event_type='transaction_v2'. Never COUNT(DISTINCT sid) for transactions — one session can have multiple transactions.",
+      "good": "COUNT(DISTINCT REPLACE(JSON_EXTRACT(event_misc,'$.transactionId'),'\"',''))",
+      "bad": "COUNT(DISTINCT sid) WHERE event_type='transaction_v2'"
+    },
+    {
+  "id": "E32",
+  "q": "AOV from reorder widget last N days day by day",
+  "tables": ["noonbifood.growthv1.nat_events_complete", "noonbifood.reporting.daily_orders"],
+  "aliases": ["reorder widget", "reorder carousel", "Multiple_Carousel_Reorder"],
+  "note": "Widget filter = $.wt field only (NOT $.src, NOT $.oc). event_type='transaction_v2' (NOT 'transaction'). Join key = outlet_code → restaurant_code (NOT transactionId → order_id). Both $.wt conditions required together.",
+  "sql_template": "WITH reorder_txns AS (SELECT JSON_EXTRACT_SCALAR(event_misc,'$.oc') AS outlet_code, day FROM noonbifood.growthv1.nat_events_complete WHERE day BETWEEN DATE_SUB(CURRENT_DATE(),INTERVAL 3 DAY) AND DATE_SUB(CURRENT_DATE(),INTERVAL 1 DAY) AND LOWER(locale) LIKE '%ae%' AND (JSON_VALUE(event_misc,'$.szf') IS NOT NULL OR JSON_VALUE(event_misc,'$.mpe')='food') AND event_type='transaction_v2' AND LOWER(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%multiple_outlet_carousels_new%' AND LOWER(JSON_EXTRACT_SCALAR(event_misc,'$.wt')) LIKE '%reorder%') SELECT t.day, SAFE_DIVIDE(SUM(o.GMV),COUNT(DISTINCT o.order_id)) AS AOV FROM reorder_txns t JOIN noonbifood.reporting.daily_orders o ON t.outlet_code=o.restaurant_code AND t.day=o.day WHERE o.order_status='delivered' AND o.country='ae' GROUP BY 1 ORDER BY 1"
+},
+    {
+      "id": "E33",
+      "q": "AOV or any metric from recommended widget",
+      "tables": ["noonbifood.growthv1.nat_events_complete", "noonbifood.reporting.daily_orders"],
+      "aliases": ["recommended widget", "recommended carousel", "Multiple_Carousel_Recommended"],
+      "note": "Canonical label = 'Multiple_Carousel_Recommended'. Identify via: lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%multiple_outlet_carousels_new%' AND lower(JSON_EXTRACT_SCALAR(event_misc,'$.wt')) LIKE '%recommended%'. BOTH conditions required. Same AOV join pattern as E32."
+    },
+    {
+      "id": "E34",
+      "q": "AOV or any metric from Feature Bite widget",
+      "tables": ["noonbifood.growthv1.nat_events_complete"],
+      "aliases": ["feature bite", "featured carousel", "homepage_carousel_featured", "featured widget"],
+      "note": "Canonical label = 'Feature Bite'. Identify via: lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%homepage_carousel_featured%'. Match on SAFE_OFFSET(1) only — do NOT use full wt string as it would also match generic carousel fallback."
+    },
+    {
+      "id": "E35",
+      "q": "AOV or any metric from Pre Search widget",
+      "tables": ["noonbifood.growthv1.nat_events_complete"],
+      "aliases": ["pre search", "pre search ads", "pre_search_ads_carousel", "pre search widget"],
+      "note": "Canonical label = 'Pre Search'. Identify via: lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%pre_search_ads_carousel%'. Match on SAFE_OFFSET(1) only."
+    },
+    {
+      "id": "E36",
+      "q": "AOV or any metric from Cuisine Tile widget",
+      "tables": ["noonbifood.growthv1.nat_events_complete"],
+      "aliases": ["cuisine tile", "cuisine widget", "uae_hompage_new_cuisine_tiles"],
+      "note": "Canonical label = 'Cuisine Tile'. Identify via: lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%uae_hompage_new_cuisine_tiles%'. CRITICAL: source data has deliberate typo 'hompage' not 'homepage' — never correct this or query returns zero rows."
+    },
+    {
+      "id": "E37",
+      "q": "AOV or any metric from USP Tile widget",
+      "tables": ["noonbifood.growthv1.nat_events_complete"],
+      "aliases": ["usp tile", "usptile", "uae_homepage_newusptile_2", "usp widget"],
+      "note": "Canonical label = 'Usptile'. Identify via: lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%uae_homepage_newusptile_2%'. Match on SAFE_OFFSET(1) only."
+    },
+    {
+      "id": "E38",
+      "q": "AOV or any metric from OL widget (outlet list)",
+      "tables": ["noonbifood.growthv1.nat_events_complete"],
+      "aliases": ["OL widget", "outlet list widget", "HP-OL", "SO-OL", "SD-OL", "homepage OL", "search OL", "discovery OL"],
+      "note": "OL widget is context-sensitive — label depends on page slot (SAFE_OFFSET(0)): page LIKE '%hp%' AND widget LIKE '%ol%'→'HP - OL'; page LIKE '%so%'→'SO - OL'; page LIKE '%sd%'→'SD - OL'; else→'OL'. When user says 'OL widget' without specifying page, return all OL variants grouped. When user specifies 'homepage OL' use only 'HP - OL'."
+    },
+    {
+  "id": "R39",
+  "rule": "ANY metric scoped to a specific widget (AOV, orders, GMV, conversion) ALWAYS requires a two-step approach: (1) extract order identifiers from nat_events_complete filtered by widget condition, (2) JOIN to daily_orders for the metric. NEVER query daily_orders alone for widget-scoped metrics — daily_orders has no widget column, so querying it alone returns all orders regardless of widget and produces completely wrong results.",
+  "good": "WITH widget_txns AS (SELECT JSON_EXTRACT_SCALAR(event_misc,'$.oc') AS outlet_code, day FROM noonbifood.growthv1.nat_events_complete WHERE event_type='transaction_v2' AND <widget_filter>) SELECT SAFE_DIVIDE(SUM(o.GMV),COUNT(DISTINCT o.order_id)) AS AOV FROM widget_txns t JOIN noonbifood.reporting.daily_orders o ON t.outlet_code=o.restaurant_code AND t.day=o.day WHERE o.order_status='delivered' AND o.country='ae'",
+  "bad": "SELECT SAFE_DIVIDE(SUM(GMV),COUNT(DISTINCT order_id)) FROM noonbifood.reporting.daily_orders WHERE country='ae' AND order_status='delivered' -- NO widget filter, returns ALL orders"
+},
+{
+  "id": "R40",
+  "rule": "Widget filter for reorder widget requires TWO conditions applied to nat_events_complete, not one. Condition 1: lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%multiple_outlet_carousels_new%'. Condition 2: lower(JSON_EXTRACT_SCALAR(event_misc,'$.wt')) LIKE '%reorder%' — checked against the FULL raw $.wt string, not any SPLIT slot. Using only LIKE '%reorder%' without condition 1, or checking SAFE_OFFSET(2) instead of the full string, both return zero rows.",
+  "good": "AND lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(1)]) LIKE '%multiple_outlet_carousels_new%' AND lower(JSON_EXTRACT_SCALAR(event_misc,'$.wt')) LIKE '%reorder%'",
+  "bad_1": "AND lower(JSON_EXTRACT_SCALAR(event_misc,'$.wt')) LIKE '%reorder%' -- missing carousel_new condition, matches unrelated widgets",
+  "bad_2": "AND lower(SPLIT(JSON_EXTRACT_SCALAR(event_misc,'$.wt'),'/')[SAFE_OFFSET(2)]) LIKE '%reorder%' -- SAFE_OFFSET(2) is NULL, always returns zero rows",
+  "bad_3": "FROM noonbifood.reporting.daily_orders WHERE ... -- skips nat_events_complete entirely, no widget filter possible"
+}
+  ]
+}
