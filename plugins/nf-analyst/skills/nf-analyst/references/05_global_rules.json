@@ -273,6 +273,14 @@
     "matches": ["Red Bull", "red bull", "RedBull", "RED BULL", "red-bull", "redbull"]
   },
   "applies_to": ["item_name", "outlet_name", "brand_name", "meal_name", "product_name"]
+},
+{
+  "id": "R58",
+  "rule": "Always use LOWER() on both sides when comparing or filtering any string column. Never compare raw string columns directly — mixed case in data will cause missed rows.",
+  "enforcement": "STRICT",
+  "good": "WHERE LOWER(city) = 'dxb' | WHERE LOWER(order_status) = 'delivered' | WHERE LOWER(restaurant_name) LIKE '%kfc%'",
+  "bad": "WHERE city = 'DXB' | WHERE order_status = 'Delivered' | WHERE restaurant_name LIKE '%KFC%'",
+  "exceptions": "Columns with documented fixed-case values where case is guaranteed: country='ae', is_consumer_visible='1', bq_activation_status='Activated by Ops'. Apply LOWER() for all other string comparisons."
 }
   ]
 }
