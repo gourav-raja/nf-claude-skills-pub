@@ -20,4 +20,10 @@ for plugin in "${PLUGINS[@]}"; do
   claude plugin install "$plugin@$MARKETPLACE"
 done
 
+echo ""
+echo "To update plugins in the future, run:"
+for plugin in "${PLUGINS[@]}"; do
+  echo "  claude plugin update $plugin@$MARKETPLACE"
+done
+echo ""
 echo "✔ Done. Skills available in your next Claude Code session."
